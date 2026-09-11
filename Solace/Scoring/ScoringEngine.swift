@@ -40,7 +40,7 @@ enum ScoringEngine {
         for exclusion in profile.allergenExclusions {
             let normalizedExclusion = normalize(exclusion)
             guard !normalizedExclusion.isEmpty else { continue }
-            let hit = food.allergensTags.contains { normalize($0).contains(normalizedExclusion) }
+            let hit = food.allergensTags.contains { tagMatches(normalize($0), exclusion: normalizedExclusion) }
             if hit {
                 flags.append(
                     SafetyFlag(
@@ -55,7 +55,7 @@ enum ScoringEngine {
             for rawFlag in profile.dietaryFlags {
                 let flag = rawFlag.lowercased()
                 guard let keywords = dietaryConflictKeywords[flag] else { continue }
-                if let match = keywords.first(where: { ingredientsText.contains($0) }) {
+                if let match = keywords.first(where: { keywordMatches($0, in: ingredientsText) }) {
                     flags.append(
                         SafetyFlag(
                             kind: .dietaryConflict(flag),
@@ -81,10 +81,41 @@ enum ScoringEngine {
         "vegan": ["meat", "chicken", "beef", "pork", "fish", "gelatin", "milk", "cheese", "butter", "egg", "honey", "whey", "casein"],
         "vegetarian": ["meat", "chicken", "beef", "pork", "fish", "gelatin"],
         "glutenfree": ["wheat", "barley", "rye", "malt"],
-        "gluten-free": ["wheat", "barley", "rye", "malt"],
         "halal": ["pork", "alcohol", "wine", "gelatin"],
         "kosher": ["pork", "shellfish", "shrimp", "crab", "lobster"],
     ]
+
+    /// Plant-based "milk" is a common vegan ingredient name (soy milk, oat
+    /// milk, ...) — flagging every mention of "milk" as a dairy conflict
+    /// would misfire on exactly the vegan-friendly products it's meant to
+    /// protect against.
+    private static let plantMilkQualifiers: Set<String> = ["soy", "oat", "almond", "coconut", "rice", "cashew", "pea", "hemp"]
+
+    /// Whole-word (or whole-word-sequence) match, used instead of plain
+    /// substring matching so e.g. "egg" doesn't match "eggplant" and "nuts"
+    /// doesn't match "coconuts".
+    private static func keywordMatches(_ keyword: String, in text: String) -> Bool {
+        let words = text.split(whereSeparator: { !$0.isLetter }).map { $0.lowercased() }
+        guard wordSequence(keyword.split(separator: " ").map(String.init), occursIn: words) else { return false }
+        guard keyword == "milk" else { return true }
+        return words.enumerated().contains { index, word in
+            guard word == "milk" else { return false }
+            let precedingWord = index > 0 ? words[index - 1] : nil
+            return precedingWord.map { !plantMilkQualifiers.contains($0) } ?? true
+        }
+    }
+
+    private static func tagMatches(_ tag: String, exclusion: String) -> Bool {
+        wordSequence(exclusion.split(separator: " ").map(String.init), occursIn: tag.split(separator: " ").map(String.init))
+    }
+
+    private static func wordSequence(_ needle: [String], occursIn haystack: [String]) -> Bool {
+        guard !needle.isEmpty, needle.count <= haystack.count else { return false }
+        for start in 0...(haystack.count - needle.count) {
+            if Array(haystack[start..<start + needle.count]) == needle { return true }
+        }
+        return false
+    }
 
     // MARK: - Composite
 
