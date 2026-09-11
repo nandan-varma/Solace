@@ -22,4 +22,11 @@ enum UserProfileRepository {
         }
         return created
     }
+
+    static func update(_ profile: UserProfile) async throws {
+        @Dependency(\.defaultDatabase) var database
+        try await database.write { db in
+            try UserProfile.upsert { profile }.execute(db)
+        }
+    }
 }

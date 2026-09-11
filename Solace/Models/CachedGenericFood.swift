@@ -9,7 +9,7 @@ import SQLiteData
 /// USDA FoodData Central cache, keyed by `fdcId`. Reference data — never
 /// synced via CloudKit.
 @Table("cachedGenericFoods")
-nonisolated struct CachedGenericFood: Codable, Identifiable, Sendable {
+nonisolated struct CachedGenericFood: Codable, Identifiable, Hashable, Sendable {
     @Column(primaryKey: true) var fdcId: Int
     var description: String                 // e.g. "Banana, raw"
     var dataType: String                    // "Foundation" | "SRLegacy" | "Branded" | "Survey"

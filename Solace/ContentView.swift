@@ -12,46 +12,19 @@ struct ContentView: View {
     var body: some View {
         TabView {
             Tab("Today", systemImage: "calendar") {
-                TodayPlaceholderView()
+                TodayView()
             }
             Tab("Scan", systemImage: "barcode.viewfinder") {
                 ScanView()
             }
             Tab("Trends", systemImage: "chart.line.uptrend.xyaxis") {
-                HistoryPlaceholderView()
+                HistoryView()
             }
             Tab("Settings", systemImage: "gearshape") {
-                SettingsPlaceholderView()
+                SettingsView()
             }
         }
         .tint(.solaceVitality)
-    }
-}
-
-private struct TodayPlaceholderView: View {
-    var body: some View {
-        NavigationStack {
-            Text("Today")
-                .navigationTitle("Solace")
-        }
-    }
-}
-
-private struct HistoryPlaceholderView: View {
-    var body: some View {
-        NavigationStack {
-            Text("Trends")
-                .navigationTitle("Trends")
-        }
-    }
-}
-
-private struct SettingsPlaceholderView: View {
-    var body: some View {
-        NavigationStack {
-            Text("Settings")
-                .navigationTitle("Settings")
-        }
     }
 }
 

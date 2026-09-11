@@ -10,7 +10,7 @@ import SQLiteData
 /// field simply means dependent features (targets, safety checks) degrade
 /// gracefully rather than block core logging.
 @Table("userProfiles")
-nonisolated struct UserProfile: Codable, Identifiable, Sendable {
+nonisolated struct UserProfile: Codable, Identifiable, Equatable, Sendable {
     let id: UUID
     var sex: String?
     var birthYear: Int?

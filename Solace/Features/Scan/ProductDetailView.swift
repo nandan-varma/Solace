@@ -76,6 +76,10 @@ struct ProductDetailView: View {
                     }
                 }
 
+                LogEntryControl { quantity, mealSlot in
+                    try await DiaryRepository.logProduct(product, quantityGrams: quantity, mealSlot: mealSlot)
+                }
+
                 Text("Data from Open Food Facts (ODbL)")
                     .font(.solaceCaption)
                     .foregroundStyle(.secondary)

@@ -22,13 +22,14 @@ Build phases from the architecture spec, each gated on a concrete acceptance che
 - **Done when:** scanning a real barcode on a physical device returns and displays correct Nutri-Score/NOVA/Green-Score data, and a generic-food search returns correct USDA macros. *(Automated: 10/10 unit tests pass over real fixture data; app builds and launches in Simulator. Live camera scan on a physical device is still a manual check for the user.)*
 
 ## Phase 2 — Diary core
-- [ ] Generic-food search screen
-- [ ] `DiaryEntry` logging from product/genericFood sources
-- [ ] Mifflin-St Jeor target calculator + unit tests
-- [ ] Today view
-- [ ] `HealthKitManager` writes
-- [ ] History/Trends tab
-- **Done when:** a logged entry appears correctly in both the app's Today view and the system Health app, and syncs to a second device/simulator via CloudKit within a reasonable delay. *(Automated: Simulator Health app write-through; cross-device CloudKit sync is a manual check.)*
+- [x] Generic-food search screen (USDA-first)
+- [x] `DiaryEntry` logging from product/genericFood sources (shared `LogEntryControl`)
+- [x] Mifflin-St Jeor target calculator + unit tests (verified against hand-calculated examples)
+- [x] Today view (energy ring, macro cards, quick entry, meal-slot log)
+- [x] `HealthKitManager` writes (opt-in, write-only, de-duped via `healthKitSampleUUID`)
+- [x] History/Trends tab (Swift Charts, last 7 days)
+- [x] Settings screen: body stats/targets, scoring weights, allergen/diet exclusions, HealthKit + on-device AI toggles (BYOK cloud AI fields deferred to Phase 4)
+- **Done when:** a logged entry appears correctly in both the app's Today view and the system Health app, and syncs to a second device/simulator via CloudKit within a reasonable delay. *(Automated: 15/15 unit tests pass; app builds and runs in Simulator with live data flowing through Today/Trends. HealthKit write path and cross-device CloudKit sync still need manual confirmation on the user's devices.)*
 
 ## Phase 3 — On-device AI
 - [ ] `SystemLanguageModel` availability gate + degraded UI
