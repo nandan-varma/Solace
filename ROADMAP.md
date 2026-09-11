@@ -32,9 +32,9 @@ Build phases from the architecture spec, each gated on a concrete acceptance che
 - **Done when:** a logged entry appears correctly in both the app's Today view and the system Health app, and syncs to a second device/simulator via CloudKit within a reasonable delay. *(Automated: 15/15 unit tests pass; app builds and runs in Simulator with live data flowing through Today/Trends. HealthKit write path and cross-device CloudKit sync still need manual confirmation on the user's devices.)*
 
 ## Phase 3 — On-device AI
-- [ ] `SystemLanguageModel` availability gate + degraded UI
-- [ ] `ScoreExplanation` flow on Product Detail
-- **Done when:** explanations are factually consistent with the underlying numbers across at least 20 varied test products (no invented figures). *(Needs Apple Intelligence-eligible hardware — manual check.)*
+- [x] `SystemLanguageModel` availability gate + degraded UI (`OnDeviceExplainer`, verified against the real iOS 26 SDK's `FoundationModels.swiftinterface`)
+- [x] `ScoreExplanation` flow on Product Detail, gated on `UserProfile.onDeviceAIEnabled`
+- **Done when:** explanations are factually consistent with the underlying numbers across at least 20 varied test products (no invented figures). *(App builds and the availability-gated UI is wired end-to-end; real generation output needs Apple Intelligence-eligible hardware — manual check for the user, since this dev environment can't run/verify the actual model output.)*
 
 ## Phase 4 — Cloud AI + photo logging
 - [ ] Settings screen (profile, targets, weights, allergens, AI config)

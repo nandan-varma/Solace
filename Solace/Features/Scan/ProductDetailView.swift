@@ -12,7 +12,11 @@ struct ProductDetailView: View {
 
     @State private var product: CachedProduct?
     @State private var result: ScoreResult?
+    @State private var profile: UserProfile?
     @State private var loadError: String?
+    @State private var explanation: String?
+    @State private var explanationError: String?
+    @State private var isExplaining = false
 
     var body: some View {
         Group {
@@ -76,6 +80,10 @@ struct ProductDetailView: View {
                     }
                 }
 
+                if profile?.onDeviceAIEnabled == true {
+                    aiExplanationCard(product: product, result: result)
+                }
+
                 LogEntryControl { quantity, mealSlot in
                     try await DiaryRepository.logProduct(product, quantityGrams: quantity, mealSlot: mealSlot)
                 }
@@ -103,11 +111,59 @@ struct ProductDetailView: View {
         }
     }
 
+    private func aiExplanationCard(product: CachedProduct, result: ScoreResult) -> some View {
+        VStack(alignment: .leading, spacing: Spacing.md) {
+            Label("Apple Foundation Model", systemImage: "sparkles")
+                .font(.solaceHeadlineSm)
+                .foregroundStyle(Color.solaceAI)
+
+            if let explanation {
+                Text(explanation).font(.solaceBodyMd)
+            } else if let explanationError {
+                Text(explanationError).font(.solaceCaption).foregroundStyle(.secondary)
+            } else {
+                Button {
+                    Task { await explain(product: product, result: result) }
+                } label: {
+                    if isExplaining {
+                        ProgressView().frame(maxWidth: .infinity)
+                    } else {
+                        Label("Explain This Score", systemImage: "sparkles").frame(maxWidth: .infinity)
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.solaceAI)
+                .disabled(isExplaining)
+            }
+
+            Text("Private & offline — synthesized on-device.")
+                .font(.solaceCaption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(Spacing.lg)
+        .solaceCard()
+    }
+
+    private func explain(product: CachedProduct, result: ScoreResult) async {
+        isExplaining = true
+        defer { isExplaining = false }
+        do {
+            explanation = try await OnDeviceExplainer.explain(food: product.scoringInput, result: result)
+        } catch let error as OnDeviceExplainerError {
+            if case .unavailable(let reason) = error {
+                explanationError = reason.userFacingMessage
+            }
+        } catch {
+            explanationError = error.localizedDescription
+        }
+    }
+
     private func load() async {
         do {
             let product = try await ProductRepository.product(forBarcode: barcode)
             let profile = try await UserProfileRepository.current()
             self.product = product
+            self.profile = profile
             self.result = ScoringEngine.evaluate(product.scoringInput, profile: profile)
         } catch {
             loadError = error.localizedDescription
