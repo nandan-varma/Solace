@@ -12,20 +12,18 @@ struct RemovableChip: View {
     let onRemove: () -> Void
 
     var body: some View {
-        HStack(spacing: 6) {
-            Text(label)
-                .font(.solaceLabel)
-            Button(action: onRemove) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 10, weight: .bold))
+        Button(action: onRemove) {
+            HStack(spacing: 6) {
+                Text(label).font(.solaceLabel)
+                Image(systemName: "xmark").font(.system(size: 10, weight: .bold))
             }
-            .accessibilityLabel("Remove \(label)")
+            .foregroundStyle(tint)
+            .padding(.horizontal, Spacing.md)
+            .frame(minHeight: 44)
+            .background(tint.opacity(0.14), in: Capsule())
         }
-        .foregroundStyle(tint)
-        .padding(.leading, Spacing.md)
-        .padding(.trailing, Spacing.sm)
-        .padding(.vertical, Spacing.xs + 2)
-        .background(tint.opacity(0.14), in: Capsule())
+        .buttonStyle(.plain)
+        .accessibilityLabel("Remove \(label)")
     }
 }
 
@@ -39,18 +37,21 @@ struct SelectableChip: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 6) {
-                if isSelected {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 10, weight: .bold))
-                }
+                Image(systemName: "checkmark")
+                    .font(.system(size: 10, weight: .bold))
+                    .opacity(isSelected ? 1 : 0)
+                    .accessibilityHidden(true)
                 Text(label)
                     .font(.solaceLabel)
             }
             .foregroundStyle(isSelected ? .white : tint)
             .padding(.horizontal, Spacing.md)
             .padding(.vertical, Spacing.xs + 2)
-            .background(isSelected ? tint : tint.opacity(0.12), in: Capsule())
+            .frame(minHeight: 44)
+            .background(isSelected ? (tint == .solaceVitality ? Color.solaceAction : tint) : tint.opacity(0.12), in: Capsule())
         }
         .buttonStyle(.plain)
+        .sensoryFeedback(.selection, trigger: isSelected)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }

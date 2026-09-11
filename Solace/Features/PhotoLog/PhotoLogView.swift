@@ -13,6 +13,11 @@ import UIKit
 struct PhotoLogView: View {
     @Environment(\.dismiss) private var dismiss
 
+    @FocusState private var contextFocused: Bool
+    @State private var showLibrary = false
+    @State private var showDiscardConfirmation = false
+    @State private var isConfigured: Bool?
+    @State private var showSettings = false
     @State private var photoItem: PhotosPickerItem?
     @State private var imageData: Data?
     @State private var showSourcePicker = false
@@ -29,32 +34,64 @@ struct PhotoLogView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: Spacing.lg) {
+                    if isConfigured == false {
+                        VStack(alignment: .leading, spacing: Spacing.md) {
+                            Label("Set up Photo AI", systemImage: "sparkles").font(.headline)
+                            Text("Connect your AI provider in Settings to estimate a meal from a photo. Photos are sent to that provider for analysis; you review the result before logging.")
+                                .font(.subheadline).foregroundStyle(.secondary)
+                            Button("Open AI settings") { showSettings = true }
+                                .buttonStyle(.solaceSecondary(.solaceAI))
+                        }
+                        .padding(Spacing.lg).solaceCard()
+                    }
                     photoPicker
+                        .disabled(isConfigured != true || isEstimating || isSaving || didSave)
                     if imageData != nil, draft == nil {
-                        contextField
+                        contextField.disabled(isEstimating)
                         estimateButton
                     }
                     if let draft {
                         draftReview(draft)
                     }
+                    if let estimateError {
+                        Label(estimateError, systemImage: "exclamationmark.triangle.fill")
+                            .font(.footnote).foregroundStyle(Color.solaceDestructive)
+                    }
                 }
                 .padding(Spacing.lg)
             }
             .background(Color.solaceCanvas)
-            .navigationTitle("Photo AI Log")
+            .navigationTitle("Photo log")
+            .scrollDismissesKeyboard(.interactively)
+            .task { await checkConfiguration() }
+            .sheet(isPresented: $showSettings, onDismiss: { Task { await checkConfiguration() } }) {
+                SettingsView(cloudAIOnly: true, onClose: { showSettings = false })
+                    .interactiveDismissDisabled()
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }
+                    Button("Close") {
+                        if imageData != nil && !didSave { showDiscardConfirmation = true }
+                        else { dismiss() }
+                    }
+                    .disabled(isEstimating || isSaving)
                 }
             }
             .confirmationDialog("Add a Photo", isPresented: $showSourcePicker, titleVisibility: .visible) {
                 if CameraCaptureView.isAvailable {
                     Button("Take Photo") { showCamera = true }
                 }
-                PhotosPicker(selection: $photoItem, matching: .images) {
-                    Text("Choose from Library")
-                }
+                Button("Choose from Library") { showLibrary = true }
             }
+            .photosPicker(isPresented: $showLibrary, selection: $photoItem, matching: .images)
+            .interactiveDismissDisabled((imageData != nil && !didSave) || isEstimating || isSaving)
+            .confirmationDialog("Discard this photo log?", isPresented: $showDiscardConfirmation, titleVisibility: .visible) {
+                Button("Discard photo log", role: .destructive) { dismiss() }
+                Button("Keep editing", role: .cancel) {}
+            } message: {
+                Text("This photo and any unsaved edits will be removed.")
+            }
+            .sensoryFeedback(.success, trigger: didSave)
             .fullScreenCover(isPresented: $showCamera) {
                 CameraCaptureView(
                     onCapture: { data in
@@ -65,11 +102,18 @@ struct PhotoLogView: View {
                 )
                 .ignoresSafeArea()
             }
-            .onChange(of: photoItem) { _, newItem in
-                Task {
-                    if let data = try? await newItem?.loadTransferable(type: Data.self) {
-                        applyNewImage(data)
+            .task(id: photoItem) {
+                guard let photoItem else { return }
+                do {
+                    guard let data = try await photoItem.loadTransferable(type: Data.self) else {
+                        estimateError = "Couldn’t open that photo. Please choose another image."
+                        return
                     }
+                    guard !Task.isCancelled else { return }
+                    applyNewImage(data)
+                } catch {
+                    guard !Task.isCancelled else { return }
+                    estimateError = "Couldn’t open that photo. Please try again."
                 }
             }
         }
@@ -89,7 +133,7 @@ struct PhotoLogView: View {
                             .frame(height: 220)
                             .frame(maxWidth: .infinity)
                             .clipShape(RoundedRectangle(cornerRadius: Corner.lg, style: .continuous))
-                        Label("Retake", systemImage: "arrow.triangle.2.circlepath")
+                        Label("Change photo", systemImage: "arrow.triangle.2.circlepath")
                             .font(.solaceCaption)
                             .padding(.horizontal, Spacing.sm)
                             .padding(.vertical, Spacing.xs)
@@ -133,6 +177,9 @@ struct PhotoLogView: View {
         VStack(alignment: .leading, spacing: Spacing.sm) {
             Text("CONTEXT (OPTIONAL)").font(.solaceCaption).foregroundStyle(.secondary)
             TextField("e.g. \"added parmesan, large portion\"", text: $userContext)
+                .focused($contextFocused)
+                .submitLabel(.done)
+                .onSubmit { contextFocused = false }
                 .padding(Spacing.md)
                 .background(Color.solaceFill, in: RoundedRectangle(cornerRadius: Corner.sm, style: .continuous))
         }
@@ -151,12 +198,6 @@ struct PhotoLogView: View {
             }
             .buttonStyle(.solacePrimary(.solaceAI))
             .disabled(isEstimating)
-
-            if let estimateError {
-                Label(estimateError, systemImage: "exclamationmark.triangle.fill")
-                    .font(.solaceCaption)
-                    .foregroundStyle(Color.solaceDestructive)
-            }
         }
     }
 
@@ -171,6 +212,7 @@ struct PhotoLogView: View {
                 VStack(spacing: 0) {
                     ForEach(Array(draft.items.indices), id: \.self) { index in
                         itemRow(index: index)
+                            .disabled(isSaving || didSave)
                         if index < draft.items.count - 1 {
                             Divider().padding(.leading, Spacing.md)
                         }
@@ -199,7 +241,7 @@ struct PhotoLogView: View {
                     .foregroundStyle(color)
             }
             ProgressView(value: draft.confidence).tint(color)
-            Text("Typical error is \u{00b1}15\u{2013}30% for single-item plates, more for composed dishes \u{2014} always double-check before saving.")
+            Text("Confidence is reported by the AI, not a guarantee of accuracy. Check the foods and portions before saving, especially for mixed dishes.")
                 .font(.solaceCaption)
                 .foregroundStyle(.secondary)
         }
@@ -210,7 +252,7 @@ struct PhotoLogView: View {
     private func itemRow(index: Int) -> some View {
         Group {
             if let item = draft?.items[safe: index] {
-                HStack(spacing: Spacing.md) {
+                VStack(alignment: .leading, spacing: Spacing.sm) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(item.name).font(.solaceBody)
                         Text("\(Int(item.kcal)) kcal").font(.solaceCaption).foregroundStyle(.secondary)
@@ -249,28 +291,10 @@ struct PhotoLogView: View {
                         Text("to \(mealSlot.displayName)").font(.solaceCaption).foregroundStyle(.secondary)
                     }
                 }
+                Button("Done") { dismiss() }.buttonStyle(.solacePrimary())
             } else {
                 Text("MEAL").font(.solaceCaption).foregroundStyle(.secondary)
-                HStack(spacing: Spacing.sm) {
-                    ForEach(MealSlot.allCases) { slot in
-                        Button {
-                            mealSlot = slot
-                        } label: {
-                            VStack(spacing: 4) {
-                                Image(systemName: slot.icon).font(.system(size: 15))
-                                Text(slot.displayName).font(.solaceCaption)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, Spacing.sm)
-                            .foregroundStyle(mealSlot == slot ? .white : .primary)
-                            .background(
-                                RoundedRectangle(cornerRadius: Corner.sm, style: .continuous)
-                                    .fill(mealSlot == slot ? slot.tint : Color.solaceFill)
-                            )
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
+                MealSlotPicker(selection: $mealSlot).disabled(isSaving)
 
                 let totalKcal = draft.items.reduce(0) { $0 + $1.kcal }
                 Button {
@@ -302,8 +326,14 @@ struct PhotoLogView: View {
         self.draft = draft
     }
 
+    private func checkConfiguration() async {
+        let settings = try? await AIProviderSettingsRepository.current()
+        isConfigured = settings?.isEnabled == true && !(KeychainStore.get(.aiProviderAPIKey) ?? "").isEmpty
+    }
+
     private func estimate() async {
         guard let imageData else { return }
+        contextFocused = false
         isEstimating = true
         estimateError = nil
         defer { isEstimating = false }
@@ -319,6 +349,8 @@ struct PhotoLogView: View {
     }
 
     private func save(_ draft: PhotoEstimateResult) async {
+        guard !isSaving, !didSave else { return }
+        estimateError = nil
         isSaving = true
         defer { isSaving = false }
         do {

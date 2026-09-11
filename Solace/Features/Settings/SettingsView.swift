@@ -9,15 +9,39 @@ import SwiftUI
 /// toggles, and both AI tiers (on-device always available; cloud BYOK
 /// opt-in per Section 7).
 struct SettingsView: View {
+    var cloudAIOnly = false
+    var onClose: (() -> Void)?
+
+    private enum Field: Hashable { case target, birthYear, height, weight, allergen, endpoint, model, apiKey }
+    @FocusState private var focusedField: Field?
     @State private var profile = UserProfile(id: UUID())
     @State private var newAllergen = ""
     @State private var aiSettings = AIProviderSettings(id: UUID())
     @State private var apiKey = ""
     @State private var isLoaded = false
+    @State private var saveError: String?
+    @State private var showOnboarding = false
 
     @State private var profileSaveTask: Task<Void, Never>?
     @State private var aiSettingsSaveTask: Task<Void, Never>?
     @State private var apiKeySaveTask: Task<Void, Never>?
+
+    private var profileValidation: String? {
+        if let target = profile.dailyCalorieTargetOverride, !(1...10000).contains(target) {
+            return "Enter a calorie target from 1 to 10,000, or clear it."
+        }
+        let year = Calendar.current.component(.year, from: Date())
+        if let birthYear = profile.birthYear, !(year - 120...year).contains(birthYear) {
+            return "Enter a valid birth year."
+        }
+        if let height = profile.heightCm, !height.isFinite || height <= 0 || height > 300 {
+            return "Enter a height greater than 0 and up to 300 cm."
+        }
+        if let weight = profile.weightKg, !weight.isFinite || weight <= 0 || weight > 1000 {
+            return "Enter a weight greater than 0 and up to 1,000 kg."
+        }
+        return nil
+    }
 
     private static let dietaryFlagOptions: [(id: String, label: String)] = [
         ("vegan", "Vegan"), ("vegetarian", "Vegetarian"), ("glutenfree", "Gluten-Free"),
@@ -27,27 +51,75 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
-                metabolicTargetSection
-                scoringWeightsSection
-                allergenSection
-                dietarySection
-                appleEcosystemSection
-                aiSection
+                if let saveError {
+                    Section {
+                        Label(saveError, systemImage: "exclamationmark.triangle")
+                            .foregroundStyle(Color.solaceDestructive)
+                        Button("Retry saving") {
+                            Task {
+                                do {
+                                    guard profileValidation == nil else { return }
+                                    try await UserProfileRepository.update(profile)
+                                    try await AIProviderSettingsRepository.update(aiSettings)
+                                    self.saveError = nil
+                                } catch { self.saveError = error.localizedDescription }
+                            }
+                        }
+                    }
+                }
+                if !cloudAIOnly {
+                    metabolicTargetSection
+                    allergenSection
+                    dietarySection
+                    appleEcosystemSection
+                    aiSection
+                    scoringWeightsSection
+                }
                 cloudAISection
-                #if DEBUG
-                    DevSettingsSection(onDataChanged: reload)
-                #endif
-                aboutSection
+                if !cloudAIOnly {
+                    #if DEBUG
+                        DevSettingsSection(onDataChanged: reload)
+                    #endif
+                    aboutSection
+                }
             }
-            .navigationTitle("Settings")
+            .navigationTitle(cloudAIOnly ? "Photo AI" : "Settings")
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") { focusedField = nil }
+                }
+                if let onClose {
+                    if saveError != nil {
+                        ToolbarItem(placement: .cancellationAction) { Button("Close", action: onClose) }
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") {
+                            Task {
+                                await aiSettingsSaveTask?.value
+                                await apiKeySaveTask?.value
+                                if saveError == nil { onClose() }
+                            }
+                        }
+                    }
+                }
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .sheet(isPresented: $showOnboarding, onDismiss: { Task { await reload() } }) {
+                OnboardingView { showOnboarding = false }
+            }
             .task { await reload() }
             .onChange(of: profile) { _, newValue in
                 guard isLoaded else { return }
                 profileSaveTask?.cancel()
+                guard profileValidation == nil else { return }
                 profileSaveTask = Task {
                     try? await Task.sleep(for: .milliseconds(400))
                     guard !Task.isCancelled else { return }
-                    try? await UserProfileRepository.update(newValue)
+                    do {
+                        try await UserProfileRepository.update(newValue)
+                        saveError = nil
+                    } catch { saveError = "Your profile changes couldn’t be saved. Please retry." }
                 }
             }
             .onChange(of: aiSettings) { _, newValue in
@@ -56,7 +128,10 @@ struct SettingsView: View {
                 aiSettingsSaveTask = Task {
                     try? await Task.sleep(for: .milliseconds(400))
                     guard !Task.isCancelled else { return }
-                    try? await AIProviderSettingsRepository.update(newValue)
+                    do {
+                        try await AIProviderSettingsRepository.update(newValue)
+                        saveError = nil
+                    } catch { saveError = "Your AI settings couldn’t be saved. Please retry." }
                 }
             }
             .onChange(of: apiKey) { _, newValue in
@@ -76,8 +151,13 @@ struct SettingsView: View {
     /// change immediately instead of showing stale values.
     private func reload() async {
         isLoaded = false
-        if let loaded = try? await UserProfileRepository.current() { profile = loaded }
-        if let loadedAI = try? await AIProviderSettingsRepository.current() { aiSettings = loadedAI }
+        do {
+            profile = try await UserProfileRepository.current()
+            aiSettings = try await AIProviderSettingsRepository.current()
+        } catch {
+            saveError = "Couldn’t load settings. Reopen Settings to try again."
+            return
+        }
         apiKey = KeychainStore.get(.aiProviderAPIKey) ?? ""
         // Only start persisting once values are in place, so loading
         // existing settings doesn't immediately re-save them.
@@ -88,6 +168,10 @@ struct SettingsView: View {
 
     private var metabolicTargetSection: some View {
         Section {
+            if let profileValidation {
+                Label(profileValidation, systemImage: "exclamationmark.circle")
+                    .font(.footnote).foregroundStyle(Color.solaceDestructive)
+            }
             if let targets = NutritionTargetCalculator.targets(for: profile) {
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
@@ -107,23 +191,37 @@ struct SettingsView: View {
                 .padding(.vertical, Spacing.xs)
             }
 
+            LabeledContent("Custom target (kcal)") {
+                TextField("Optional", value: $profile.dailyCalorieTargetOverride, format: .number.grouping(.never))
+                    .focused($focusedField, equals: .target)
+                    .keyboardType(.numberPad)
+                    .multilineTextAlignment(.trailing)
+                    .accessibilityIdentifier("settings.target")
+            }
+            if profile.dailyCalorieTargetOverride != nil {
+                Button("Use calculated target instead") { profile.dailyCalorieTargetOverride = nil }
+            }
+
             Picker("Sex", selection: Binding(get: { profile.sex ?? "" }, set: { profile.sex = $0.isEmpty ? nil : $0 })) {
                 Text("Not set").tag("")
                 Text("Male").tag("male")
                 Text("Female").tag("female")
             }
             LabeledContent("Birth Year") {
-                TextField("e.g. 1996", value: $profile.birthYear, format: .number)
+                TextField("e.g. 1996", value: $profile.birthYear, format: .number.grouping(.never))
+                    .focused($focusedField, equals: .birthYear)
                     .keyboardType(.numberPad)
                     .multilineTextAlignment(.trailing)
             }
             LabeledContent("Height (cm)") {
                 TextField("e.g. 175", value: $profile.heightCm, format: .number)
+                    .focused($focusedField, equals: .height)
                     .keyboardType(.decimalPad)
                     .multilineTextAlignment(.trailing)
             }
             LabeledContent("Weight (kg)") {
                 TextField("e.g. 70", value: $profile.weightKg, format: .number)
+                    .focused($focusedField, equals: .weight)
                     .keyboardType(.decimalPad)
                     .multilineTextAlignment(.trailing)
             }
@@ -141,7 +239,7 @@ struct SettingsView: View {
         } header: {
             Label("Metabolic Target", systemImage: "flame.fill")
         } footer: {
-            Text("Computed via Mifflin-St Jeor. Any field left blank simply means the target stays hidden until it's filled in.")
+            Text("A custom target takes priority. Otherwise, an estimated target uses your birth year, height, weight, and activity. You can log food without a target.")
         }
     }
 
@@ -200,6 +298,8 @@ struct SettingsView: View {
             }
             HStack {
                 TextField("Add allergen (e.g. Peanuts)", text: $newAllergen)
+                    .focused($focusedField, equals: .allergen)
+                    .submitLabel(.done)
                     .onSubmit(addAllergen)
                 Button("Add", action: addAllergen)
                     .disabled(newAllergen.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -214,7 +314,11 @@ struct SettingsView: View {
     private func addAllergen() {
         let trimmed = newAllergen.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
-        profile.allergenExclusions.append(trimmed)
+        guard !profile.allergenExclusions.contains(where: { $0.caseInsensitiveCompare(trimmed) == .orderedSame }) else {
+            newAllergen = ""
+            return
+        }
+        profile.allergenExclusions.append(trimmed.lowercased())
         newAllergen = ""
     }
 
@@ -253,14 +357,14 @@ struct SettingsView: View {
                 Label("Sync Diary to Apple Health", systemImage: "heart.fill")
             }
             LabeledContent {
-                Text("On").foregroundStyle(Color.solaceVitality)
+                Text("Automatic").foregroundStyle(.secondary)
             } label: {
                 Label("Private iCloud Sync", systemImage: "icloud.fill")
             }
         } header: {
             Label("Apple Ecosystem", systemImage: "applelogo")
         } footer: {
-            Text("iCloud sync is always on — there's no paywall in this app, ever.")
+            Text("iCloud sync works when you’re signed into iCloud. Apple Health asks for permission when you next log food with sync enabled.")
         }
     }
 
@@ -273,9 +377,9 @@ struct SettingsView: View {
                     .foregroundStyle(Color.solaceAI)
             }
         } header: {
-            Label("AI \u{00b7} Tier 1 (On-Device)", systemImage: "cpu.fill")
+            Label("On-device AI", systemImage: "cpu.fill")
         } footer: {
-            Text("Private & offline, powered by Apple Foundation Models. Zero scan history ever leaves this device.")
+            Text("Score explanations run on your device and require an available Apple Intelligence model.")
         }
     }
 
@@ -287,24 +391,35 @@ struct SettingsView: View {
             if aiSettings.isEnabled {
                 LabeledContent("Endpoint") {
                     TextField("https://api.openai.com/v1", text: $aiSettings.baseURL)
-                        .keyboardType(.URL)
+                    .focused($focusedField, equals: .endpoint)
+                        .submitLabel(.next)
+                    .onSubmit { focusedField = .model }
+                    .keyboardType(.URL)
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.never)
                         .multilineTextAlignment(.trailing)
                 }
                 LabeledContent("Model") {
                     TextField("gpt-4o-mini", text: $aiSettings.modelString)
+                    .focused($focusedField, equals: .model)
+                        .submitLabel(.next)
+                        .onSubmit { focusedField = .apiKey }
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.never)
                         .multilineTextAlignment(.trailing)
                 }
                 LabeledContent("API Key") {
                     SecureField("sk-\u{2026}", text: $apiKey)
+                    .focused($focusedField, equals: .apiKey)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .submitLabel(.done)
+                        .onSubmit { focusedField = nil }
                         .multilineTextAlignment(.trailing)
                 }
             }
         } header: {
-            Label("AI \u{00b7} Tier 2 (Cloud, BYOK)", systemImage: "cloud.fill")
+            Label("Photo AI", systemImage: "cloud.fill")
         } footer: {
             Text("Your key stays in the Keychain and is sent directly to your provider — never to a Solace server. No key is included with this app.")
         }
@@ -314,6 +429,7 @@ struct SettingsView: View {
 
     private var aboutSection: some View {
         Section {
+            Button("Review welcome & setup") { showOnboarding = true }
             LabeledContent("Solace", value: "Free & open source")
             Label("Open Food Facts (ODbL)", systemImage: "checkmark.seal")
                 .font(.solaceCaption)

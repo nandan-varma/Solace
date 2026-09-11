@@ -12,7 +12,10 @@ struct TodayView: View {
     @FetchAll(DiaryEntry.order { $0.loggedAt.desc() }) private var allEntries
     @FetchAll(CachedProduct.all) private var cachedProducts
     @FetchAll(CachedGenericFood.all) private var cachedGenericFoods
-    @State private var profile: UserProfile?
+    @FetchAll(UserProfile.all) private var profiles
+    private var profile: UserProfile? { profiles.first }
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .body) private var energyRingSize = 128
     @State private var showSearch = false
     @State private var showPhotoLog = false
 
@@ -46,6 +49,8 @@ struct TodayView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: Spacing.xl) {
+                    Text(Date.now, format: .dateTime.weekday(.wide).month(.wide).day())
+                        .font(.subheadline).foregroundStyle(.secondary)
                     energySummary
                     macroCards
                     quickEntryRow
@@ -56,7 +61,6 @@ struct TodayView: View {
             }
             .background(Color.solaceCanvas)
             .navigationTitle("Today")
-            .task { profile = try? await UserProfileRepository.current() }
             .sheet(isPresented: $showSearch) { GenericFoodSearchView() }
             .sheet(isPresented: $showPhotoLog) { PhotoLogView() }
         }
@@ -80,14 +84,14 @@ struct TodayView: View {
             }
 
             if let targets {
-                HStack(spacing: Spacing.xl) {
+                (dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: Spacing.lg)) : AnyLayout(HStackLayout(spacing: Spacing.xl))) {
                     ScoreRing(
                         progress: targets.calorieKcal > 0 ? totals.kcal / Double(targets.calorieKcal) : 0,
                         tint: .solaceVitality,
                         value: totals.kcal.formatted(.number.precision(.fractionLength(0))),
                         caption: "kcal eaten"
                     )
-                    .frame(width: 128, height: 128)
+                    .frame(width: min(energyRingSize, 240), height: min(energyRingSize, 240))
 
                     VStack(alignment: .leading, spacing: Spacing.sm) {
                         let remaining = targets.calorieKcal - Int(totals.kcal)
@@ -120,9 +124,12 @@ struct TodayView: View {
                     .frame(width: 88)
                     VStack(alignment: .leading, spacing: Spacing.xs) {
                         Text("No daily target yet").font(.solaceHeadlineSm)
-                        Text("Add your height, weight, and activity level in Settings to see a personalized goal.")
+                        Text("Log meals at your own pace, or add a daily target in Settings.")
                             .font(.solaceCaption)
                             .foregroundStyle(.secondary)
+                        Button("Set a daily target") { router.selected = .settings }
+                            .font(.subheadline.weight(.semibold))
+                            .frame(minHeight: 44)
                     }
                 }
             }
@@ -140,7 +147,7 @@ struct TodayView: View {
     }
 
     private var macroCards: some View {
-        HStack(spacing: Spacing.sm) {
+        (dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: Spacing.sm)) : AnyLayout(HStackLayout(spacing: Spacing.sm))) {
             MacroPill(label: "Protein", color: .solaceProtein, valueGrams: totals.protein, targetGrams: targets?.proteinG)
             MacroPill(label: "Carbs", color: .solaceCarbs, valueGrams: totals.carbs, targetGrams: targets?.carbohydrateG)
             MacroPill(label: "Fat", color: .solaceFat, valueGrams: totals.fat, targetGrams: targets?.fatG)
@@ -152,7 +159,7 @@ struct TodayView: View {
     private var quickEntryRow: some View {
         VStack(alignment: .leading, spacing: Spacing.sm) {
             Text("QUICK ENTRY").font(.solaceCaption).foregroundStyle(.secondary)
-            HStack(spacing: Spacing.sm) {
+            (dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: Spacing.sm)) : AnyLayout(HStackLayout(spacing: Spacing.sm))) {
                 Button { router.selected = .scan } label: {
                     Label("Scan", systemImage: "barcode.viewfinder")
                 }
@@ -164,9 +171,10 @@ struct TodayView: View {
                 .buttonStyle(.solaceSecondary(.solaceInteractive))
 
                 Button { showPhotoLog = true } label: {
-                    Label("Photo AI", systemImage: "sparkles")
+                    Label("Photo", systemImage: "camera")
                 }
-                .buttonStyle(.solacePrimary(.solaceAI))
+                .buttonStyle(.solaceSecondary(.solaceAI))
+                .accessibilityLabel("Photo AI")
             }
         }
     }
@@ -201,10 +209,13 @@ struct TodayView: View {
                 .foregroundStyle(.tertiary)
             Text("Nothing logged yet")
                 .font(.solaceHeadlineSm)
-            Text("Use Scan, Search, or Photo AI above to log your first meal today.")
+            Text("Start with something you’ve eaten today. Every meal is a fresh start.")
                 .font(.solaceCaption)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
+            Button("Find a food") { showSearch = true }
+                .buttonStyle(.solaceSecondary())
+                .padding(.top, Spacing.sm)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, Spacing.xl)
@@ -273,7 +284,7 @@ private struct DiaryEntryRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(resolvedName)
                     .font(.solaceBody)
-                    .lineLimit(1)
+                    .lineLimit(2)
                 Text("\(Int(entry.quantityGrams))g")
                     .font(.solaceCaption)
                     .foregroundStyle(.secondary)

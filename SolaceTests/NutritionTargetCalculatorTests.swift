@@ -8,6 +8,26 @@ import Testing
 @testable import Solace
 
 struct NutritionTargetCalculatorTests {
+    @Test func invalidOverridesYieldNoTarget() {
+        for value in [-100, 0, 10001] {
+            var profile = UserProfile(id: UUID())
+            profile.dailyCalorieTargetOverride = value
+            #expect(NutritionTargetCalculator.targets(for: profile) == nil)
+        }
+    }
+
+    @Test func invalidMeasurementsYieldNoTarget() {
+        var profile = UserProfile(id: UUID())
+        profile.heightCm = 175
+        profile.weightKg = .infinity
+        profile.birthYear = 1996
+        profile.activityLevel = "moderate"
+        #expect(NutritionTargetCalculator.targets(for: profile, referenceYear: 2026) == nil)
+        profile.weightKg = 70
+        profile.birthYear = 2030
+        #expect(NutritionTargetCalculator.targets(for: profile, referenceYear: 2026) == nil)
+    }
+
     @Test func missingInputsYieldNoTarget() {
         let profile = UserProfile(id: UUID())
         #expect(NutritionTargetCalculator.targets(for: profile) == nil)

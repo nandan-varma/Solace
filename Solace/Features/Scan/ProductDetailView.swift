@@ -9,7 +9,9 @@ import SwiftUI
 /// regulatory badge row, key nutrients, laid out per `solace_scan_score_detail`.
 struct ProductDetailView: View {
     let barcode: String
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
+    @ScaledMetric(relativeTo: .body) private var matchRingSize = 100
     @State private var product: CachedProduct?
     @State private var result: ScoreResult?
     @State private var profile: UserProfile?
@@ -54,7 +56,7 @@ struct ProductDetailView: View {
                     matchScoreCard(matchScore: matchScore, breakdown: result.breakdown)
                 }
 
-                HStack(spacing: Spacing.xl) {
+                (dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: Spacing.lg)) : AnyLayout(HStackLayout(spacing: Spacing.xl))) {
                     NutriScoreBadge(grade: result.nutriScoreGrade)
                     NovaBadge(group: result.novaGroup)
                     GreenScoreBadge(grade: result.greenScoreGrade)
@@ -65,11 +67,11 @@ struct ProductDetailView: View {
 
                 VStack(alignment: .leading, spacing: Spacing.sm) {
                     Text("KEY NUTRIENTS · PER 100G").font(.solaceCaption).foregroundStyle(.secondary)
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: Spacing.sm) {
-                        MacroPill(label: "Carbs", color: .solaceCarbs, valueGrams: product.carbohydrates100g ?? 0)
-                        MacroPill(label: "Protein", color: .solaceProtein, valueGrams: product.proteins100g ?? 0)
-                        MacroPill(label: "Fat", color: .solaceFat, valueGrams: product.fat100g ?? 0)
-                        MacroPill(label: "Sugars", color: .solaceWarning, valueGrams: product.sugars100g ?? 0)
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 140))], spacing: Spacing.sm) {
+                        MacroPill(label: "Carbs", color: .solaceCarbs, valueGrams: product.carbohydrates100g)
+                        MacroPill(label: "Protein", color: .solaceProtein, valueGrams: product.proteins100g)
+                        MacroPill(label: "Fat", color: .solaceFat, valueGrams: product.fat100g)
+                        MacroPill(label: "Sugars", color: .solaceWarning, valueGrams: product.sugars100g)
                     }
                 }
 
@@ -141,14 +143,14 @@ struct ProductDetailView: View {
                     .padding(.vertical, 3)
                     .background(fitColor(for: matchScore).opacity(0.12), in: Capsule())
             }
-            HStack(spacing: Spacing.lg) {
+            (dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: Spacing.lg)) : AnyLayout(HStackLayout(spacing: Spacing.lg))) {
                 ScoreRing(
                     progress: Double(matchScore) / 100,
                     tint: fitColor(for: matchScore),
                     value: "\(matchScore)",
                     caption: "/ 100"
                 )
-                .frame(width: 100, height: 100)
+                .frame(width: min(matchRingSize, 220), height: min(matchRingSize, 220))
                 breakdownList(breakdown)
             }
         }

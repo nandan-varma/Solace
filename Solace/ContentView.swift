@@ -10,9 +10,21 @@ import SwiftUI
 /// shared down to every tab so quick actions (e.g. Today's "Scan" button)
 /// can switch tabs instead of pushing a nested copy of another tab's screen.
 struct ContentView: View {
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @State private var router = TabRouter()
 
     var body: some View {
+        Group {
+            if hasCompletedOnboarding {
+                mainTabs
+            } else {
+                OnboardingView { hasCompletedOnboarding = true }
+            }
+        }
+        .tint(.solaceVitality)
+    }
+
+    private var mainTabs: some View {
         TabView(selection: $router.selected) {
             Tab("Today", systemImage: "calendar", value: AppTab.today) {
                 TodayView()

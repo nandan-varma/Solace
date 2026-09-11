@@ -10,11 +10,11 @@ import SwiftUI
 struct MacroPill: View {
     let label: String
     let color: Color
-    let valueGrams: Double
+    let valueGrams: Double?
     var targetGrams: Double?
 
     private var progress: Double? {
-        guard let target = targetGrams, target > 0 else { return nil }
+        guard let valueGrams, let target = targetGrams, target > 0 else { return nil }
         return valueGrams / target
     }
 
@@ -24,25 +24,18 @@ struct MacroPill: View {
                 Circle().fill(color).frame(width: 8, height: 8)
                 Text(label)
                     .font(.solaceLabel)
-                if let progress {
-                    Spacer()
-                    Text(progress, format: .percent.precision(.fractionLength(0)))
-                        .font(.solaceLabel)
-                        .foregroundStyle(color)
-                }
             }
             HStack(alignment: .lastTextBaseline, spacing: Spacing.xs) {
-                Text(valueGrams, format: .number.precision(.fractionLength(0)))
+                Text(valueGrams.map { $0.formatted(.number.precision(.fractionLength(0))) } ?? "—")
                     .font(.system(.title3, weight: .bold))
                     .tabularNumbers()
                 Text("g")
                     .font(.solaceCaption)
                     .foregroundStyle(.secondary)
-                if let targetGrams {
-                    Text("/\(targetGrams.formatted(.number.precision(.fractionLength(0))))g")
-                        .font(.solaceCaption)
-                        .foregroundStyle(.secondary)
-                }
+            }
+            if let targetGrams {
+                Text("of \(targetGrams.formatted(.number.precision(.fractionLength(0)))) g")
+                    .font(.solaceCaption).foregroundStyle(.secondary)
             }
             if let progress {
                 ProgressView(value: min(max(progress, 0), 1))
@@ -52,6 +45,9 @@ struct MacroPill: View {
         .padding(Spacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
         .solaceCard()
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(label)
+        .accessibilityValue(valueGrams.map { "\($0.formatted(.number.precision(.fractionLength(0)))) grams" } ?? "Not available")
     }
 }
 

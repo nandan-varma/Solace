@@ -27,6 +27,7 @@ enum NutritionTargetCalculator {
 
     static func targets(for profile: UserProfile, referenceYear: Int = Calendar.current.component(.year, from: Date())) -> NutritionTargets? {
         if let override = profile.dailyCalorieTargetOverride {
+            guard (1...10000).contains(override) else { return nil }
             return NutritionTargets(
                 calorieKcal: override,
                 proteinG: Double(override) * 0.30 / 4,
@@ -42,6 +43,11 @@ enum NutritionTargetCalculator {
               let multiplier = ActivityMultiplier.values[activityLevel]
         else { return nil }
 
+        guard weightKg.isFinite, heightCm.isFinite,
+              weightKg > 0, weightKg <= 1000, heightCm > 0, heightCm <= 300,
+              birthYear >= referenceYear - 120, birthYear <= referenceYear
+        else { return nil }
+
         let age = Double(referenceYear - birthYear)
         // Mifflin-St Jeor differs by biological sex (+5 male / -161 female);
         // unspecified/other sex uses the midpoint rather than guessing.
@@ -55,6 +61,7 @@ enum NutritionTargetCalculator {
         let bmr = 10 * weightKg + 6.25 * heightCm - 5 * age + sexConstant
         let calorieKcal = Int((bmr * multiplier).rounded())
 
+        guard calorieKcal > 0 else { return nil }
         return NutritionTargets(
             calorieKcal: calorieKcal,
             proteinG: Double(calorieKcal) * 0.30 / 4,

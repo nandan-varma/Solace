@@ -6,16 +6,23 @@
 import SwiftUI
 
 struct ScanView: View {
+    @FocusState private var barcodeFocused: Bool
+    @State private var isVisible = false
     @State private var scannedBarcode: String?
     @State private var manualBarcode = ""
     @State private var showManualEntry = false
+
+    private var normalizedBarcode: String { manualBarcode.trimmingCharacters(in: .whitespacesAndNewlines) }
+    private var isValidBarcode: Bool {
+        [8, 12, 13, 14].contains(normalizedBarcode.count) && normalizedBarcode.allSatisfy { $0.isASCII && $0.isNumber }
+    }
 
     var body: some View {
         NavigationStack {
             Group {
                 if BarcodeScannerAvailability.isSupported {
                     ZStack {
-                        BarcodeScannerView(isScanning: scannedBarcode == nil) { barcode in
+                        BarcodeScannerView(isScanning: isVisible && scannedBarcode == nil && !showManualEntry) { barcode in
                             guard scannedBarcode == nil else { return }
                             scannedBarcode = barcode
                         }
@@ -62,6 +69,8 @@ struct ScanView: View {
                 }
             }
             .navigationTitle("Scan")
+            .onAppear { isVisible = true }
+            .onDisappear { isVisible = false }
             .navigationDestination(item: $scannedBarcode) { barcode in
                 ProductDetailView(barcode: barcode)
             }
@@ -75,11 +84,17 @@ struct ScanView: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("Barcode (EAN-13, EAN-8, UPC-E)", text: $manualBarcode)
+                    TextField("Barcode digits", text: $manualBarcode)
+                        .focused($barcodeFocused)
+                        .accessibilityIdentifier("scan.barcode")
                         .keyboardType(.numberPad)
                 } footer: {
-                    Text("Type the digits printed under the barcode on the package.")
+                    Text("Type the 8, 12, 13, or 14 digits printed under the barcode on the package.")
                 }
+            }
+            .task {
+                await Task.yield()
+                barcodeFocused = true
             }
             .navigationTitle("Enter Barcode")
             .navigationBarTitleDisplayMode(.inline)
@@ -89,15 +104,17 @@ struct ScanView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Look Up") {
-                        scannedBarcode = manualBarcode
+                        barcodeFocused = false
+                        scannedBarcode = normalizedBarcode
                         showManualEntry = false
                         manualBarcode = ""
                     }
-                    .disabled(manualBarcode.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .disabled(!isValidBarcode)
                 }
             }
         }
         .presentationDetents([.medium])
+        .presentationDragIndicator(.visible)
     }
 }
 

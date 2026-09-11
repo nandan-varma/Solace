@@ -8,9 +8,19 @@ import SwiftUI
 /// Shared quantity + meal-slot + log button, used by every logging path
 /// (barcode product, generic food search) so they converge on the same UX.
 struct LogEntryControl: View {
+    var onDone: (() -> Void)? = nil
     let onLog: (Double, MealSlot) async throws -> Void
 
-    @State private var quantityGrams: Double = 100
+    @Environment(\.dismiss) private var dismiss
+    @FocusState private var quantityFocused: Bool
+    @State private var quantityText = "100"
+    private var quantityGrams: Double {
+        (try? Double(quantityText, format: .number)) ?? .nan
+    }
+    private var validQuantity: Bool { quantityGrams.isFinite && (1...2000).contains(quantityGrams) }
+    private var formattedQuantity: String {
+        validQuantity ? quantityGrams.formatted(.number.precision(.fractionLength(0...1))) : "—"
+    }
     @State private var mealSlot: MealSlot = .current()
     @State private var isLogging = false
     @State private var logError: String?
@@ -25,21 +35,28 @@ struct LogEntryControl: View {
                         .foregroundStyle(Color.solaceVitality)
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Logged").font(.solaceHeadlineSm)
-                        Text("\(Int(quantityGrams))g to \(mealSlot.displayName)")
+                        Text("\(formattedQuantity) g to \(mealSlot.displayName)")
                             .font(.solaceCaption)
                             .foregroundStyle(.secondary)
                     }
                 }
-                .transition(.opacity.combined(with: .scale(scale: 0.98)))
+                .transition(.opacity)
+                Button("Done") {
+                    if let onDone { onDone() } else { dismiss() }
+                }.buttonStyle(.solacePrimary())
             } else {
                 VStack(alignment: .leading, spacing: Spacing.sm) {
                     Text("MEAL").font(.solaceCaption).foregroundStyle(.secondary)
-                    mealSlotPicker
+                    MealSlotPicker(selection: $mealSlot).disabled(isLogging)
                 }
 
                 VStack(alignment: .leading, spacing: Spacing.sm) {
                     Text("QUANTITY").font(.solaceCaption).foregroundStyle(.secondary)
-                    quantityStepper
+                    quantityStepper.disabled(isLogging)
+                    if !validQuantity {
+                        Text("Enter a portion from 1 to 2,000 grams.")
+                            .font(.footnote).foregroundStyle(Color.solaceDestructive)
+                    }
                 }
 
                 Button {
@@ -48,11 +65,11 @@ struct LogEntryControl: View {
                     if isLogging {
                         ProgressView().tint(.white)
                     } else {
-                        Text("Log \(Int(quantityGrams))g to \(mealSlot.displayName)")
+                        Text("Log \(formattedQuantity) g to \(mealSlot.displayName)")
                     }
                 }
                 .buttonStyle(.solacePrimary())
-                .disabled(isLogging)
+                .disabled(isLogging || !validQuantity)
 
                 if let logError {
                     Label(logError, systemImage: "exclamationmark.triangle.fill")
@@ -63,30 +80,11 @@ struct LogEntryControl: View {
         }
         .padding(Spacing.lg)
         .solaceCard()
+        .sensoryFeedback(.success, trigger: didLog)
         .animation(.easeOut(duration: 0.25), value: didLog)
-    }
-
-    private var mealSlotPicker: some View {
-        HStack(spacing: Spacing.sm) {
-            ForEach(MealSlot.allCases) { slot in
-                Button {
-                    mealSlot = slot
-                } label: {
-                    VStack(spacing: 4) {
-                        Image(systemName: slot.icon)
-                            .font(.system(size: 15))
-                        Text(slot.displayName)
-                            .font(.solaceCaption)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, Spacing.sm)
-                    .foregroundStyle(mealSlot == slot ? .white : .primary)
-                    .background(
-                        RoundedRectangle(cornerRadius: Corner.sm, style: .continuous)
-                            .fill(mealSlot == slot ? slot.tint : Color.solaceFill)
-                    )
-                }
-                .buttonStyle(.plain)
+        .toolbar {
+            ToolbarItem(placement: .keyboard) {
+                Button("Done") { quantityFocused = false }
             }
         }
     }
@@ -94,17 +92,24 @@ struct LogEntryControl: View {
     private var quantityStepper: some View {
         HStack {
             stepButton(systemImage: "minus", action: { adjust(by: -10) })
+                .disabled(validQuantity && quantityGrams <= 1)
             Spacer()
-            Text("\(Int(quantityGrams))")
+            TextField("Grams", text: $quantityText)
+                .accessibilityIdentifier("log.quantity")
+                .keyboardType(.decimalPad)
+                .focused($quantityFocused)
+                .multilineTextAlignment(.center)
+                .accessibilityLabel("Quantity in grams")
                 .font(.solaceStat(size: 22))
                 .tabularNumbers()
                 .contentTransition(.numericText())
-                .animation(.default, value: quantityGrams)
+                .animation(.default, value: quantityText)
             Text("g")
                 .font(.solaceBodyMd)
                 .foregroundStyle(.secondary)
             Spacer()
             stepButton(systemImage: "plus", action: { adjust(by: 10) })
+                .disabled(validQuantity && quantityGrams >= 2000)
         }
         .padding(.vertical, Spacing.sm)
         .padding(.horizontal, Spacing.md)
@@ -115,17 +120,22 @@ struct LogEntryControl: View {
         Button(action: action) {
             Image(systemName: systemImage)
                 .font(.system(size: 14, weight: .bold))
-                .frame(width: 32, height: 32)
+                .frame(width: 44, height: 44)
                 .background(Color.solaceCard, in: Circle())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(systemImage == "minus" ? "Decrease quantity by 10 grams" : "Increase quantity by 10 grams")
     }
 
     private func adjust(by delta: Double) {
-        quantityGrams = min(2000, max(1, quantityGrams + delta))
+        let value = min(2000, max(1, (validQuantity ? quantityGrams : 100) + delta))
+        quantityText = value.formatted(.number.grouping(.never).precision(.fractionLength(0...1)))
     }
 
     private func log() async {
+        guard quantityGrams.isFinite, (1...2000).contains(quantityGrams), !isLogging else { return }
+        quantityFocused = false
+        logError = nil
         isLogging = true
         defer { isLogging = false }
         do {

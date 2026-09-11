@@ -15,7 +15,12 @@ extension Color {
     static let solaceFill = Color(.tertiarySystemFill)
 
     // MARK: Semantic accents
-    static let solaceVitality = Color(.systemGreen)      // optimal alignment, primary action
+    static let solaceVitality = Color(uiColor: UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(red: 0.40, green: 0.82, blue: 0.59, alpha: 1)
+            : UIColor(red: 0.10, green: 0.40, blue: 0.27, alpha: 1)
+    })
+    static let solaceAction = Color(red: 0.10, green: 0.40, blue: 0.27)      // optimal alignment, primary action
     static let solaceInteractive = Color(.systemBlue)    // links, nav, calorie ring
     static let solaceAI = Color(.systemIndigo)           // on-device / cloud AI features
     static let solaceWarning = Color(.systemOrange)      // sodium, sugar, allergen caution

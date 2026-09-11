@@ -10,19 +10,22 @@ import SwiftUI
 struct SolacePrimaryButtonStyle: ButtonStyle {
     var tint: Color = .solaceVitality
     @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(.body, weight: .semibold))
             .foregroundStyle(.white)
-            .frame(height: 50)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 14)
+            .frame(minHeight: 50)
             .frame(maxWidth: .infinity)
             .background(
-                tint.opacity(isEnabled ? 1 : 0.4),
+                (tint == .solaceVitality ? Color.solaceAction : tint).opacity(isEnabled ? 1 : 0.4),
                 in: RoundedRectangle(cornerRadius: Corner.md, style: .continuous)
             )
-            .scaleEffect(configuration.isPressed ? 0.97 : 1)
-            .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.98 : 1)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: configuration.isPressed)
     }
 }
 
@@ -30,16 +33,19 @@ struct SolacePrimaryButtonStyle: ButtonStyle {
 struct SolaceSecondaryButtonStyle: ButtonStyle {
     var tint: Color = .solaceInteractive
     @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(.body, weight: .semibold))
             .foregroundStyle(tint.opacity(isEnabled ? 1 : 0.4))
-            .frame(height: 50)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 14)
+            .frame(minHeight: 50)
             .frame(maxWidth: .infinity)
             .background(Color.solaceFill, in: RoundedRectangle(cornerRadius: Corner.md, style: .continuous))
-            .scaleEffect(configuration.isPressed ? 0.97 : 1)
-            .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.98 : 1)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: configuration.isPressed)
     }
 }
 

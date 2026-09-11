@@ -77,3 +77,21 @@ strings; they aren't present). They provide:
 
 - Open Food Facts API v3 (`world.openfoodfacts.org`) — ODbL, custom `User-Agent: Solace/<version> (nandanvarma.me@gmail.com)` required, attribution shown in-app.
 - USDA FoodData Central API (`api.nal.usda.gov`) — public domain, BYOK header, `DEMO_KEY` fallback.
+
+## First launch and interface behavior
+
+`ContentView` presents optional three-step onboarding before the tabs. It loads
+existing preferences, supports skipping without changing them, and saves selected
+allergens, diets, and an optional calorie override together before marking setup
+complete. Completion is local `AppStorage`; Settings can reopen setup. No camera,
+Health, or cloud AI permission is requested by onboarding.
+
+Today and Trends observe the profile table so target edits update immediately.
+Portion controls support direct numeric entry and validate before logging. Missing
+nutrition values display as unavailable, and a clean safety check is described as
+“no conflicts found,” never a guarantee of safety. Photo logging explains provider
+setup before image selection and surfaces both estimation and save failures.
+
+UI regression tests cover onboarding completion and relaunch persistence, skipping,
+and manual barcode validation. The DEBUG-only `--reset-onboarding` argument resets
+only the local completion flag for testing; it does not clear profile or diary data.

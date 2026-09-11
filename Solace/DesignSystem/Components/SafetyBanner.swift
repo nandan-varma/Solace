@@ -18,10 +18,10 @@ struct SafetyBanner: View {
                     .font(.title2)
                     .foregroundStyle(flags.isEmpty ? Color.solaceVitality : Color.solaceDestructive)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(flags.isEmpty ? "Verified Safe for Your Profile" : "Conflicts With Your Profile")
+                    Text(flags.isEmpty ? "No conflicts found" : "Conflicts With Your Profile")
                         .font(.solaceHeadlineSm)
                     Text(flags.isEmpty
-                         ? "Zero allergen or dietary cross-conflicts detected"
+                         ? "Based on available product data and your preferences. Always check the package for allergens."
                          : flags.map(\.description).joined(separator: ", "))
                         .font(.solaceBodyMd)
                         .foregroundStyle(.secondary)

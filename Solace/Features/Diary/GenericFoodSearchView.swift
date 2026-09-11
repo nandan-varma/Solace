@@ -11,6 +11,9 @@ import SwiftUI
 struct GenericFoodSearchView: View {
     @Environment(\.dismiss) private var dismiss
 
+    @FocusState private var searchFocused: Bool
+    @State private var searchPresented = true
+    @State private var didFocusSearch = false
     @State private var query = ""
     @State private var results: [CachedGenericFood] = []
     @State private var isSearching = false
@@ -26,7 +29,7 @@ struct GenericFoodSearchView: View {
                         Text(searchError).foregroundStyle(.secondary)
                         Button("Try Again") { runSearch(debounced: false) }
                     }
-                } else if results.isEmpty && query.isEmpty {
+                } else if results.isEmpty && query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     ContentUnavailableView(
                         "Search Verified Foods",
                         systemImage: "leaf.fill",
@@ -42,20 +45,41 @@ struct GenericFoodSearchView: View {
                 }
             }
             .listStyle(.plain)
-            .navigationTitle("Search USDA Database")
+            .navigationTitle("Find a food")
+            .scrollDismissesKeyboard(.interactively)
             .navigationDestination(for: CachedGenericFood.self) { food in
-                GenericFoodDetailView(food: food)
+                GenericFoodDetailView(food: food, onDone: { dismiss() })
+                    .onAppear { searchFocused = false }
             }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") { dismiss() }
                 }
             }
-            .searchable(text: $query, prompt: "e.g. \"banana, raw\"")
+            .searchable(text: $query, isPresented: $searchPresented,
+                        placement: .navigationBarDrawer(displayMode: .always), prompt: "Search foods")
+            .searchFocused($searchFocused)
+            .task {
+                guard !didFocusSearch else { return }
+                didFocusSearch = true
+                await Task.yield()
+                searchFocused = true
+            }
+            .onDisappear {
+                searchTask?.cancel()
+                isSearching = false
+                isPending = false
+            }
             .onChange(of: query) { _, _ in runSearch(debounced: true) }
-            .onSubmit(of: .search) { runSearch(debounced: false) }
+            .onSubmit(of: .search) {
+                searchFocused = false
+                runSearch(debounced: false)
+            }
             .overlay {
-                if isSearching && results.isEmpty { ProgressView() }
+                if (isSearching || isPending) && results.isEmpty {
+                    ProgressView("Searching foods…")
+                        .padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+                }
             }
         }
     }
@@ -64,7 +88,7 @@ struct GenericFoodSearchView: View {
     /// instead of requiring an explicit keyboard "Search" tap.
     private func runSearch(debounced: Bool) {
         searchTask?.cancel()
-        let trimmed = query.trimmingCharacters(in: .whitespaces)
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             results = []
             searchError = nil
@@ -72,6 +96,9 @@ struct GenericFoodSearchView: View {
             isSearching = false
             return
         }
+        results = []
+        searchError = nil
+        isSearching = false
         isPending = true
         searchTask = Task {
             if debounced {
@@ -134,6 +161,7 @@ private struct GenericFoodRow: View {
 
 private struct GenericFoodDetailView: View {
     let food: CachedGenericFood
+    let onDone: () -> Void
 
     var body: some View {
         ScrollView {
@@ -164,15 +192,15 @@ private struct GenericFoodDetailView: View {
 
                 VStack(alignment: .leading, spacing: Spacing.sm) {
                     Text("NUTRIENTS \u{00b7} PER 100G").font(.solaceCaption).foregroundStyle(.secondary)
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: Spacing.sm) {
-                        MacroPill(label: "Carbs", color: .solaceCarbs, valueGrams: food.carbohydrates100g ?? 0)
-                        MacroPill(label: "Protein", color: .solaceProtein, valueGrams: food.proteins100g ?? 0)
-                        MacroPill(label: "Fat", color: .solaceFat, valueGrams: food.fat100g ?? 0)
-                        MacroPill(label: "Fiber", color: .solaceVitality, valueGrams: food.fiber100g ?? 0)
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 140))], spacing: Spacing.sm) {
+                        MacroPill(label: "Carbs", color: .solaceCarbs, valueGrams: food.carbohydrates100g)
+                        MacroPill(label: "Protein", color: .solaceProtein, valueGrams: food.proteins100g)
+                        MacroPill(label: "Fat", color: .solaceFat, valueGrams: food.fat100g)
+                        MacroPill(label: "Fiber", color: .solaceVitality, valueGrams: food.fiber100g)
                     }
                 }
 
-                LogEntryControl { quantity, mealSlot in
+                LogEntryControl(onDone: onDone) { quantity, mealSlot in
                     try await DiaryRepository.logGenericFood(food, quantityGrams: quantity, mealSlot: mealSlot)
                 }
 

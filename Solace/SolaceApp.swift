@@ -12,6 +12,11 @@ import SwiftUI
 @main
 struct SolaceApp: App {
     init() {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--reset-onboarding") {
+            UserDefaults.standard.set(false, forKey: "hasCompletedOnboarding")
+        }
+        #endif
         try! prepareDependencies {
             try $0.bootstrapDatabase()
         }
