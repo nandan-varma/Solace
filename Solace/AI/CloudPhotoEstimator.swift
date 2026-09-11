@@ -7,6 +7,7 @@ import Foundation
 
 enum CloudPhotoEstimatorError: LocalizedError, Equatable {
     case notConfigured
+    case invalidEndpoint
     case invalidOrDeprecatedModel(String)
     case server(Int, String)
     case decoding
@@ -15,6 +16,8 @@ enum CloudPhotoEstimatorError: LocalizedError, Equatable {
         switch self {
         case .notConfigured:
             return "Enable AI features and add an API key in Settings first."
+        case .invalidEndpoint:
+            return "The AI endpoint URL in Settings isn't valid. Update it and try again."
         case .invalidOrDeprecatedModel(let model):
             return "The model \"\(model)\" was rejected by your provider — it may be renamed, retired, or misspelled. Update it in Settings."
         case .server(let code, let message):
@@ -35,7 +38,10 @@ enum CloudPhotoEstimator {
             throw CloudPhotoEstimatorError.notConfigured
         }
 
-        var request = URLRequest(url: URL(string: settings.baseURL.trimmingCharacters(in: .init(charactersIn: "/")) + "/chat/completions")!)
+        guard let url = URL(string: settings.baseURL.trimmingCharacters(in: .init(charactersIn: "/")) + "/chat/completions") else {
+            throw CloudPhotoEstimatorError.invalidEndpoint
+        }
+        var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
@@ -81,6 +87,10 @@ enum CloudPhotoEstimator {
         return try parse(data)
     }
 
+    /// Caps how many items a single response can seed, so a runaway or
+    /// malicious provider response can't render an unbounded stepper list.
+    private static let maxItems = 25
+
     static func parse(_ data: Data) throws -> PhotoEstimateResult {
         guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let choices = root["choices"] as? [[String: Any]],
@@ -91,15 +101,21 @@ enum CloudPhotoEstimator {
               let rawItems = payload["items"] as? [[String: Any]]
         else { throw CloudPhotoEstimatorError.decoding }
 
-        let items = rawItems.compactMap { item -> PhotoEstimateItem? in
+        let items = rawItems.prefix(maxItems).compactMap { item -> PhotoEstimateItem? in
             guard let name = item["name"] as? String else { return nil }
+            let grams = (item["estimatedGrams"] as? NSNumber)?.doubleValue ?? 0
+            guard grams.isFinite else { return nil }
+            func nonNegative(_ key: String) -> Double {
+                let value = (item[key] as? NSNumber)?.doubleValue ?? 0
+                return value.isFinite ? max(0, value) : 0
+            }
             return PhotoEstimateItem(
                 name: name,
-                estimatedGrams: (item["estimatedGrams"] as? NSNumber)?.doubleValue ?? 0,
-                kcal: (item["kcal"] as? NSNumber)?.doubleValue ?? 0,
-                proteinG: (item["proteinG"] as? NSNumber)?.doubleValue ?? 0,
-                carbG: (item["carbG"] as? NSNumber)?.doubleValue ?? 0,
-                fatG: (item["fatG"] as? NSNumber)?.doubleValue ?? 0
+                estimatedGrams: min(max(grams, 1), 2000),
+                kcal: nonNegative("kcal"),
+                proteinG: nonNegative("proteinG"),
+                carbG: nonNegative("carbG"),
+                fatG: nonNegative("fatG")
             )
         }
         guard !items.isEmpty else { throw CloudPhotoEstimatorError.decoding }

@@ -35,9 +35,17 @@ final class HealthKitManager: @unchecked Sendable {
             didRequestAuthorization = true
         }
 
+        // HKObject validates quantities at creation time and raises an
+        // uncatchable NSException (not a Swift error) for non-finite or
+        // negative values, which aborts the process. Guard before ever
+        // constructing a sample.
+        let values = [entry.energyKcal, entry.proteinsG, entry.carbohydratesG, entry.fatG]
+        guard values.allSatisfy({ $0.isFinite && $0 >= 0 }) else { return nil }
+
         let metadata: [String: Any] = [
             HKMetadataKeyWasUserEntered: true,
             HKMetadataKeySyncIdentifier: entry.id.uuidString,
+            HKMetadataKeySyncVersion: 1,
         ]
 
         let samples: [HKQuantitySample] = [
