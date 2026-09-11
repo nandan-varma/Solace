@@ -32,8 +32,10 @@ struct ProductDetailView: View {
                 content(product: product, result: result)
             } else {
                 ProgressView("Looking up \(barcode)…")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
+        .background(Color.solaceCanvas)
         .navigationTitle("Product Evaluation")
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
@@ -42,29 +44,14 @@ struct ProductDetailView: View {
     private func content(product: CachedProduct, result: ScoreResult) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Spacing.lg) {
+                sourceRow
+
                 SafetyBanner(flags: result.safetyFlags)
 
-                VStack(alignment: .leading, spacing: Spacing.xs) {
-                    if let brands = product.brands { Text(brands.uppercased()).font(.solaceLabel).foregroundStyle(.secondary) }
-                    Text(product.name ?? "Unknown product").font(.solaceHeadline)
-                }
+                header(product: product)
 
                 if let matchScore = result.matchScore {
-                    VStack(alignment: .leading, spacing: Spacing.md) {
-                        Text("MATCH SCORE").font(.solaceCaption).foregroundStyle(.secondary)
-                        HStack(spacing: Spacing.lg) {
-                            ScoreRing(
-                                progress: Double(matchScore) / 100,
-                                tint: .solaceVitality,
-                                value: "\(matchScore)",
-                                caption: "/ 100"
-                            )
-                            .frame(width: 100, height: 100)
-                            breakdownList(result.breakdown)
-                        }
-                    }
-                    .padding(Spacing.lg)
-                    .solaceCard()
+                    matchScoreCard(matchScore: matchScore, breakdown: result.breakdown)
                 }
 
                 HStack(spacing: Spacing.xl) {
@@ -77,7 +64,7 @@ struct ProductDetailView: View {
                 .solaceCard()
 
                 VStack(alignment: .leading, spacing: Spacing.sm) {
-                    Text("KEY NUTRIENTS (per 100g)").font(.solaceCaption).foregroundStyle(.secondary)
+                    Text("KEY NUTRIENTS · PER 100G").font(.solaceCaption).foregroundStyle(.secondary)
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: Spacing.sm) {
                         MacroPill(label: "Carbs", color: .solaceCarbs, valueGrams: product.carbohydrates100g ?? 0)
                         MacroPill(label: "Protein", color: .solaceProtein, valueGrams: product.proteins100g ?? 0)
@@ -94,18 +81,113 @@ struct ProductDetailView: View {
                     try await DiaryRepository.logProduct(product, quantityGrams: quantity, mealSlot: mealSlot)
                 }
 
-                Text("Data from Open Food Facts (ODbL)")
-                    .font(.solaceCaption)
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 4) {
+                    Image(systemName: "checkmark.seal")
+                    Text("Data from Open Food Facts (ODbL)")
+                }
+                .font(.solaceCaption)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity)
             }
             .padding(Spacing.lg)
         }
     }
 
+    private var sourceRow: some View {
+        HStack {
+            Label(barcode, systemImage: "barcode")
+                .font(.solaceCaption)
+                .foregroundStyle(.secondary)
+            Spacer()
+            Label("Open Food Facts v3", systemImage: "checkmark.seal.fill")
+                .font(.solaceCaption)
+                .foregroundStyle(Color.solaceVitality)
+        }
+    }
+
+    private func header(product: CachedProduct) -> some View {
+        HStack(alignment: .top, spacing: Spacing.md) {
+            AsyncImage(url: product.imageURL.flatMap(URL.init)) { phase in
+                if let image = phase.image {
+                    image.resizable().scaledToFill()
+                } else {
+                    Color.solaceFill.overlay(Image(systemName: "photo").foregroundStyle(.tertiary))
+                }
+            }
+            .frame(width: 64, height: 64)
+            .clipShape(RoundedRectangle(cornerRadius: Corner.sm, style: .continuous))
+
+            VStack(alignment: .leading, spacing: Spacing.xs) {
+                if let brands = product.brands {
+                    Text(brands.uppercased()).font(.solaceLabel).foregroundStyle(.secondary)
+                }
+                Text(product.name ?? "Unknown product")
+                    .font(.solaceHeadline)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func matchScoreCard(matchScore: Int, breakdown: [String: Double]) -> some View {
+        VStack(alignment: .leading, spacing: Spacing.md) {
+            HStack {
+                Text("MATCH SCORE").font(.solaceCaption).foregroundStyle(.secondary)
+                Spacer()
+                Text(fitLabel(for: matchScore))
+                    .font(.solaceCaption)
+                    .foregroundStyle(fitColor(for: matchScore))
+                    .padding(.horizontal, Spacing.sm)
+                    .padding(.vertical, 3)
+                    .background(fitColor(for: matchScore).opacity(0.12), in: Capsule())
+            }
+            HStack(spacing: Spacing.lg) {
+                ScoreRing(
+                    progress: Double(matchScore) / 100,
+                    tint: fitColor(for: matchScore),
+                    value: "\(matchScore)",
+                    caption: "/ 100"
+                )
+                .frame(width: 100, height: 100)
+                breakdownList(breakdown)
+            }
+        }
+        .padding(Spacing.lg)
+        .solaceCard()
+    }
+
+    private func fitLabel(for score: Int) -> String {
+        switch score {
+        case 80...: return "Great Fit"
+        case 60..<80: return "Good Fit"
+        case 40..<60: return "Fair Fit"
+        default: return "Poor Fit"
+        }
+    }
+
+    private func fitColor(for score: Int) -> Color {
+        switch score {
+        case 80...: return .solaceVitality
+        case 60..<80: return .solaceInteractive
+        case 40..<60: return .solaceWarning
+        default: return .solaceDestructive
+        }
+    }
+
+    private func breakdownColor(for factor: String) -> Color {
+        switch factor {
+        case "Nutri-Score": return .solaceVitality
+        case "NOVA": return .solaceWarning
+        case "Green-Score": return .solaceInteractive
+        default: return .solaceAI
+        }
+    }
+
     private func breakdownList(_ breakdown: [String: Double]) -> some View {
-        VStack(alignment: .leading, spacing: Spacing.xs) {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
             ForEach(breakdown.sorted(by: { $0.key < $1.key }), id: \.key) { factor, contribution in
-                HStack {
+                HStack(spacing: Spacing.xs) {
+                    Circle().fill(breakdownColor(for: factor)).frame(width: 6, height: 6)
                     Text(factor).font(.solaceLabel)
                     Spacer()
                     Text(contribution, format: .number.precision(.fractionLength(1)))
@@ -119,7 +201,7 @@ struct ProductDetailView: View {
 
     private func aiExplanationCard(product: CachedProduct, result: ScoreResult) -> some View {
         VStack(alignment: .leading, spacing: Spacing.md) {
-            Label("Apple Foundation Model", systemImage: "sparkles")
+            Label("Apple Foundation Model", systemImage: "apple.logo")
                 .font(.solaceHeadlineSm)
                 .foregroundStyle(Color.solaceAI)
 
@@ -137,22 +219,28 @@ struct ProductDetailView: View {
                     Task { await explain(product: product, result: result) }
                 } label: {
                     if isExplaining {
-                        ProgressView().frame(maxWidth: .infinity)
+                        ProgressView().tint(.white)
                     } else {
-                        Label("Explain This Score", systemImage: "sparkles").frame(maxWidth: .infinity)
+                        Label("Explain This Score", systemImage: "sparkles")
                     }
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.solaceAI)
+                .buttonStyle(.solacePrimary(.solaceAI))
                 .disabled(isExplaining)
             }
 
-            Text("Private & offline — synthesized on-device.")
+            Label("Private & offline — synthesized on-device.", systemImage: "lock.fill")
                 .font(.solaceCaption)
                 .foregroundStyle(.secondary)
         }
         .padding(Spacing.lg)
-        .solaceCard()
+        .background(
+            RoundedRectangle(cornerRadius: Corner.lg, style: .continuous)
+                .fill(Color.solaceAI.opacity(0.06))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: Corner.lg, style: .continuous)
+                .strokeBorder(Color.solaceAI.opacity(0.15), lineWidth: 1)
+        )
     }
 
     private func explain(product: CachedProduct, result: ScoreResult) async {

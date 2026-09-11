@@ -6,11 +6,42 @@
 import Dependencies
 import Foundation
 import SQLiteData
+import SwiftUI
 
 enum MealSlot: String, CaseIterable, Identifiable {
     case breakfast, lunch, dinner, snack
     var id: String { rawValue }
     var displayName: String { rawValue.capitalized }
+
+    /// Time of day this slot is typically logged, used to default the
+    /// picker to something sensible instead of always "Snack".
+    static func current(at date: Date = Date()) -> MealSlot {
+        switch Calendar.current.component(.hour, from: date) {
+        case 4..<11: return .breakfast
+        case 11..<15: return .lunch
+        case 15..<18: return .snack
+        case 18..<23: return .dinner
+        default: return .snack
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .breakfast: return "sunrise.fill"
+        case .lunch: return "sun.max.fill"
+        case .dinner: return "moon.stars.fill"
+        case .snack: return "leaf.fill"
+        }
+    }
+
+    var tint: Color {
+        switch self {
+        case .breakfast: return .solaceWarning
+        case .lunch: return .solaceVitality
+        case .dinner: return .solaceAI
+        case .snack: return .solaceInteractive
+        }
+    }
 }
 
 /// Writes go through here so every logging path (barcode, search, photo)

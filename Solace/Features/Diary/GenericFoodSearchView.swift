@@ -29,26 +29,19 @@ struct GenericFoodSearchView: View {
                 } else if results.isEmpty && query.isEmpty {
                     ContentUnavailableView(
                         "Search Verified Foods",
-                        systemImage: "magnifyingglass",
-                        description: Text("Search USDA FoodData Central for whole foods like \"banana, raw\" or \"chicken breast\".")
+                        systemImage: "leaf.fill",
+                        description: Text("Search USDA FoodData Central for whole foods like \u{201c}banana, raw\u{201d} or \u{201c}chicken breast\u{201d}.")
                     )
                 } else if results.isEmpty && !isSearching && !isPending {
                     ContentUnavailableView.search(text: query)
                 }
                 ForEach(results) { food in
                     NavigationLink(value: food) {
-                        VStack(alignment: .leading, spacing: Spacing.xs) {
-                            Text(food.description).font(.solaceBody)
-                            HStack(spacing: Spacing.sm) {
-                                Text(food.dataType).font(.solaceCaption).foregroundStyle(.secondary)
-                                if let kcal = food.energyKcal100g {
-                                    Text("\(Int(kcal)) kcal / 100g").font(.solaceCaption).foregroundStyle(.secondary)
-                                }
-                            }
-                        }
+                        GenericFoodRow(food: food)
                     }
                 }
             }
+            .listStyle(.plain)
             .navigationTitle("Search USDA Database")
             .navigationDestination(for: CachedGenericFood.self) { food in
                 GenericFoodDetailView(food: food)
@@ -106,34 +99,94 @@ struct GenericFoodSearchView: View {
     }
 }
 
+private struct GenericFoodRow: View {
+    let food: CachedGenericFood
+
+    var body: some View {
+        HStack(spacing: Spacing.md) {
+            ZStack {
+                Circle().fill(Color.solaceInteractive.opacity(0.12))
+                Image(systemName: "leaf.fill")
+                    .font(.system(size: 15))
+                    .foregroundStyle(Color.solaceInteractive)
+            }
+            .frame(width: 40, height: 40)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(food.description).font(.solaceBody).lineLimit(2)
+                Text(food.dataType == "Foundation" ? "USDA Foundation \u{00b7} Verified" : "USDA SR Legacy \u{00b7} Verified")
+                    .font(.solaceCaption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            if let kcal = food.energyKcal100g {
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(Int(kcal), format: .number).font(.solaceLabel).tabularNumbers()
+                    Text("kcal/100g").font(.solaceCaption).foregroundStyle(.secondary)
+                }
+            }
+        }
+        .padding(.vertical, Spacing.xs)
+    }
+}
+
 private struct GenericFoodDetailView: View {
     let food: CachedGenericFood
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Spacing.lg) {
-                Text(food.description).font(.solaceHeadline)
-                Text(food.dataType == "Foundation" ? "USDA Foundation Food — verified" : "USDA SR Legacy — verified")
+                Label("USDA FoodData Central", systemImage: "checkmark.seal.fill")
                     .font(.solaceCaption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.solaceInteractive)
 
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: Spacing.sm) {
-                    MacroPill(label: "Carbs", color: .solaceCarbs, valueGrams: food.carbohydrates100g ?? 0)
-                    MacroPill(label: "Protein", color: .solaceProtein, valueGrams: food.proteins100g ?? 0)
-                    MacroPill(label: "Fat", color: .solaceFat, valueGrams: food.fat100g ?? 0)
-                    MacroPill(label: "Fiber", color: .solaceVitality, valueGrams: food.fiber100g ?? 0)
+                HStack(alignment: .top, spacing: Spacing.md) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: Corner.sm, style: .continuous)
+                            .fill(Color.solaceInteractive.opacity(0.12))
+                        Image(systemName: "leaf.fill")
+                            .font(.system(size: 26))
+                            .foregroundStyle(Color.solaceInteractive)
+                    }
+                    .frame(width: 64, height: 64)
+
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
+                        Text(food.description)
+                            .font(.solaceHeadline)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text(food.dataType == "Foundation" ? "USDA Foundation Food" : "USDA SR Legacy")
+                            .font(.solaceCaption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: Spacing.sm) {
+                    Text("NUTRIENTS \u{00b7} PER 100G").font(.solaceCaption).foregroundStyle(.secondary)
+                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: Spacing.sm) {
+                        MacroPill(label: "Carbs", color: .solaceCarbs, valueGrams: food.carbohydrates100g ?? 0)
+                        MacroPill(label: "Protein", color: .solaceProtein, valueGrams: food.proteins100g ?? 0)
+                        MacroPill(label: "Fat", color: .solaceFat, valueGrams: food.fat100g ?? 0)
+                        MacroPill(label: "Fiber", color: .solaceVitality, valueGrams: food.fiber100g ?? 0)
+                    }
                 }
 
                 LogEntryControl { quantity, mealSlot in
                     try await DiaryRepository.logGenericFood(food, quantityGrams: quantity, mealSlot: mealSlot)
                 }
 
-                Text("Data from USDA FoodData Central (public domain)")
-                    .font(.solaceCaption)
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 4) {
+                    Image(systemName: "checkmark.seal")
+                    Text("Data from USDA FoodData Central (public domain)")
+                }
+                .font(.solaceCaption)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity)
             }
             .padding(Spacing.lg)
         }
+        .background(Color.solaceCanvas)
         .navigationTitle("Food Detail")
         .navigationBarTitleDisplayMode(.inline)
     }
