@@ -56,6 +56,23 @@ Pure, synchronous, unit-tested. Evaluation order:
 - Photo-estimate accuracy is a structural, published limitation (±15-30% single item, worse for composed dishes) — UI must show confidence, not just this doc.
 - Keychain keys must never reach logs, crash reports, or analytics.
 
+## Developer tooling
+
+`Solace/Dev/DevDataSeeder.swift` and the Settings "Developer" section
+(`Solace/Features/Settings/DevSettingsSection.swift`) are wrapped in
+`#if DEBUG`, so they're compiled out of Release builds entirely — not just
+hidden at runtime (verified by checking the Release binary for the dev
+strings; they aren't present). They provide:
+
+- **Seed Sample Data** — a default profile plus a few cached products/foods
+  and a week of diary entries, so Today/Trends/Search have real-looking data
+  without manual scanning or network calls.
+- **Wipe All Data** — deletes every row in every table and clears both
+  Keychain credentials, resetting to a fresh-install-like state. Gated
+  behind a confirmation dialog since it's destructive.
+- **Database File** — copies the local SQLite path to the clipboard, for
+  opening it directly in a DB browser during development.
+
 ## External data sources
 
 - Open Food Facts API v3 (`world.openfoodfacts.org`) — ODbL, custom `User-Agent: Solace/<version> (nandanvarma.me@gmail.com)` required, attribution shown in-app.

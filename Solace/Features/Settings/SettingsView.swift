@@ -31,17 +31,13 @@ struct SettingsView: View {
                 appleEcosystemSection
                 aiSection
                 cloudAISection
+                #if DEBUG
+                    DevSettingsSection(onDataChanged: reload)
+                #endif
                 aboutSection
             }
             .navigationTitle("Settings")
-            .task {
-                if let loaded = try? await UserProfileRepository.current() { profile = loaded }
-                if let loadedAI = try? await AIProviderSettingsRepository.current() { aiSettings = loadedAI }
-                apiKey = KeychainStore.get(.aiProviderAPIKey) ?? ""
-                // Only start persisting once initial values are in place, so
-                // loading existing settings doesn't immediately re-save them.
-                isLoaded = true
-            }
+            .task { await reload() }
             .onChange(of: profile) { _, newValue in
                 guard isLoaded else { return }
                 profileSaveTask?.cancel()
@@ -70,6 +66,19 @@ struct SettingsView: View {
                 }
             }
         }
+    }
+
+    /// Loads persisted state from the database/Keychain into local `@State`.
+    /// Also called after dev tools seed/wipe data, so the form reflects the
+    /// change immediately instead of showing stale values.
+    private func reload() async {
+        isLoaded = false
+        if let loaded = try? await UserProfileRepository.current() { profile = loaded }
+        if let loadedAI = try? await AIProviderSettingsRepository.current() { aiSettings = loadedAI }
+        apiKey = KeychainStore.get(.aiProviderAPIKey) ?? ""
+        // Only start persisting once values are in place, so loading
+        // existing settings doesn't immediately re-save them.
+        isLoaded = true
     }
 
     private var bodyStatsSection: some View {
