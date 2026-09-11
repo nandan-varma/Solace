@@ -3,6 +3,7 @@
 //  Solace
 //
 
+import CloudKit
 import SwiftUI
 
 /// Profile, targets, scoring weights, allergen/diet safety, Apple ecosystem
@@ -21,6 +22,7 @@ struct SettingsView: View {
     @State private var isLoaded = false
     @State private var saveError: String?
     @State private var showOnboarding = false
+    @State private var iCloudAccountStatus: CKAccountStatus?
 
     @State private var profileSaveTask: Task<Void, Never>?
     @State private var aiSettingsSaveTask: Task<Void, Never>?
@@ -96,6 +98,7 @@ struct SettingsView: View {
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Done") {
                             Task {
+                                await profileSaveTask?.value
                                 await aiSettingsSaveTask?.value
                                 await apiKeySaveTask?.value
                                 if saveError == nil { onClose() }
@@ -109,6 +112,7 @@ struct SettingsView: View {
                 OnboardingView { showOnboarding = false }
             }
             .task { await reload() }
+            .task { iCloudAccountStatus = try? await CKContainer.default().accountStatus() }
             .onChange(of: profile) { _, newValue in
                 guard isLoaded else { return }
                 profileSaveTask?.cancel()
@@ -349,6 +353,30 @@ struct SettingsView: View {
         }
     }
 
+    private var iCloudStatusLabel: String {
+        switch iCloudAccountStatus {
+        case .available: return "Automatic"
+        case .noAccount: return "Signed Out"
+        case .restricted: return "Restricted"
+        case .couldNotDetermine, .none: return "Checking…"
+        case .temporarilyUnavailable: return "Unavailable"
+        @unknown default: return "Unknown"
+        }
+    }
+
+    private var iCloudStatusColor: Color {
+        iCloudAccountStatus == .available ? .secondary : Color.solaceWarning
+    }
+
+    private var iCloudStatusFooter: String {
+        switch iCloudAccountStatus {
+        case .available, .couldNotDetermine, .none:
+            return "iCloud sync works when you’re signed into iCloud. Apple Health asks for permission when you next log food with sync enabled."
+        default:
+            return "Sign in to iCloud in Settings to sync your diary and preferences across devices. Logging still works locally without it."
+        }
+    }
+
     // MARK: - Apple ecosystem
 
     private var appleEcosystemSection: some View {
@@ -357,14 +385,14 @@ struct SettingsView: View {
                 Label("Sync Diary to Apple Health", systemImage: "heart.fill")
             }
             LabeledContent {
-                Text("Automatic").foregroundStyle(.secondary)
+                Text(iCloudStatusLabel).foregroundStyle(iCloudStatusColor)
             } label: {
                 Label("Private iCloud Sync", systemImage: "icloud.fill")
             }
         } header: {
             Label("Apple Ecosystem", systemImage: "applelogo")
         } footer: {
-            Text("iCloud sync works when you’re signed into iCloud. Apple Health asks for permission when you next log food with sync enabled.")
+            Text(iCloudStatusFooter)
         }
     }
 

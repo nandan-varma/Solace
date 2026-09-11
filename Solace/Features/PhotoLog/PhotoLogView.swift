@@ -20,6 +20,7 @@ struct PhotoLogView: View {
     @State private var showSettings = false
     @State private var photoItem: PhotosPickerItem?
     @State private var imageData: Data?
+    @State private var previewImage: UIImage?
     @State private var showSourcePicker = false
     @State private var showCamera = false
     @State private var userContext = ""
@@ -104,6 +105,7 @@ struct PhotoLogView: View {
             }
             .task(id: photoItem) {
                 guard let photoItem else { return }
+                defer { self.photoItem = nil }
                 do {
                     guard let data = try await photoItem.loadTransferable(type: Data.self) else {
                         estimateError = "Couldn’t open that photo. Please choose another image."
@@ -125,9 +127,9 @@ struct PhotoLogView: View {
         VStack(alignment: .leading, spacing: Spacing.sm) {
             Text("PHOTO").font(.solaceCaption).foregroundStyle(.secondary)
             Button { showSourcePicker = true } label: {
-                if let imageData, let uiImage = UIImage(data: imageData) {
+                if let previewImage {
                     ZStack(alignment: .topTrailing) {
-                        Image(uiImage: uiImage)
+                        Image(uiImage: previewImage)
                             .resizable()
                             .scaledToFill()
                             .frame(height: 220)
@@ -167,6 +169,7 @@ struct PhotoLogView: View {
 
     private func applyNewImage(_ data: Data) {
         imageData = data
+        previewImage = UIImage(data: data)
         draft = nil
         estimateError = nil
         didSave = false
@@ -332,7 +335,7 @@ struct PhotoLogView: View {
     }
 
     private func estimate() async {
-        guard let imageData else { return }
+        guard let previewImage else { return }
         contextFocused = false
         isEstimating = true
         estimateError = nil
@@ -340,12 +343,25 @@ struct PhotoLogView: View {
         do {
             let settings = try await AIProviderSettingsRepository.current()
             let apiKey = KeychainStore.get(.aiProviderAPIKey) ?? ""
+            let uploadData = Self.downsampled(previewImage) ?? imageData ?? Data()
             draft = try await CloudPhotoEstimator.estimate(
-                imageData: imageData, userContext: userContext, settings: settings, apiKey: apiKey
+                imageData: uploadData, userContext: userContext, settings: settings, apiKey: apiKey
             )
         } catch {
             estimateError = error.localizedDescription
         }
+    }
+
+    /// Full-resolution photos are unnecessary for a food estimate and slow
+    /// to upload as base64 — shrink to a reasonable max dimension first.
+    private static func downsampled(_ image: UIImage, maxDimension: CGFloat = 1024) -> Data? {
+        let size = image.size
+        let scale = min(1, maxDimension / max(size.width, size.height))
+        guard scale < 1 else { return image.jpegData(compressionQuality: 0.7) }
+        let targetSize = CGSize(width: size.width * scale, height: size.height * scale)
+        let renderer = UIGraphicsImageRenderer(size: targetSize)
+        let resized = renderer.image { _ in image.draw(in: CGRect(origin: .zero, size: targetSize)) }
+        return resized.jpegData(compressionQuality: 0.7)
     }
 
     private func save(_ draft: PhotoEstimateResult) async {
