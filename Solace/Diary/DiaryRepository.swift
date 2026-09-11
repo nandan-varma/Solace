@@ -60,6 +60,30 @@ enum DiaryRepository {
         )
     }
 
+    /// Photo estimates are logged as one entry per photo (matching the
+    /// "Save total meal" flow), summed across every edited item.
+    static func logPhotoEstimate(_ result: PhotoEstimateResult, mealSlot: MealSlot) async throws {
+        let label = result.items.map(\.name).joined(separator: ", ")
+        try await insert(
+            DiaryEntry(
+                id: UUID(),
+                loggedAt: Date(),
+                mealSlot: mealSlot.rawValue,
+                sourceKind: "photoEstimate",
+                sourceBarcode: nil,
+                sourceFdcId: nil,
+                photoEstimateLabel: label,
+                photoEstimateConfidence: result.confidence,
+                quantityGrams: result.items.reduce(0) { $0 + $1.estimatedGrams },
+                energyKcal: result.items.reduce(0) { $0 + $1.kcal },
+                proteinsG: result.items.reduce(0) { $0 + $1.proteinG },
+                carbohydratesG: result.items.reduce(0) { $0 + $1.carbG },
+                fatG: result.items.reduce(0) { $0 + $1.fatG },
+                healthKitSampleUUID: nil
+            )
+        )
+    }
+
     private static func insert(_ entry: DiaryEntry) async throws {
         @Dependency(\.defaultDatabase) var database
         try await database.write { db in

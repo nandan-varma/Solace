@@ -5,13 +5,14 @@
 
 import SwiftUI
 
-/// Profile, targets, scoring weights, allergen/diet safety, and Apple
-/// ecosystem toggles. BYOK cloud AI configuration ships in Phase 4 once
-/// `OpenAICompatibleClient` exists — this screen only covers Tier 1
-/// (on-device) for now.
+/// Profile, targets, scoring weights, allergen/diet safety, Apple ecosystem
+/// toggles, and both AI tiers (on-device always available; cloud BYOK
+/// opt-in per Section 7).
 struct SettingsView: View {
     @State private var profile = UserProfile(id: UUID())
     @State private var newAllergen = ""
+    @State private var aiSettings = AIProviderSettings(id: UUID())
+    @State private var apiKey = ""
 
     private static let knownDietaryFlags = ["vegan", "vegetarian", "glutenfree", "halal", "kosher"]
 
@@ -24,12 +25,23 @@ struct SettingsView: View {
                 dietarySection
                 appleEcosystemSection
                 aiSection
+                cloudAISection
                 aboutSection
             }
             .navigationTitle("Settings")
-            .task { if let loaded = try? await UserProfileRepository.current() { profile = loaded } }
+            .task {
+                if let loaded = try? await UserProfileRepository.current() { profile = loaded }
+                if let loadedAI = try? await AIProviderSettingsRepository.current() { aiSettings = loadedAI }
+                apiKey = KeychainStore.get(.aiProviderAPIKey) ?? ""
+            }
             .onChange(of: profile) { _, newValue in
                 Task { try? await UserProfileRepository.update(newValue) }
+            }
+            .onChange(of: aiSettings) { _, newValue in
+                Task { try? await AIProviderSettingsRepository.update(newValue) }
+            }
+            .onChange(of: apiKey) { _, newValue in
+                KeychainStore.set(newValue, for: .aiProviderAPIKey)
             }
         }
     }
@@ -163,7 +175,27 @@ struct SettingsView: View {
         } header: {
             Text("AI — Tier 1 (On-Device)")
         } footer: {
-            Text("Private & offline, powered by Apple Foundation Models. Cloud AI (photo logging) configuration ships in a later update.")
+            Text("Private & offline, powered by Apple Foundation Models.")
+        }
+    }
+
+    private var cloudAISection: some View {
+        Section {
+            Toggle("Enable Cloud AI (Photo Logging)", isOn: $aiSettings.isEnabled)
+            if aiSettings.isEnabled {
+                TextField("Endpoint URL", text: $aiSettings.baseURL)
+                    .keyboardType(.URL)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                TextField("Model (e.g. gpt-4o-mini)", text: $aiSettings.modelString)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                SecureField("API Key", text: $apiKey)
+            }
+        } header: {
+            Text("AI — Tier 2 (Cloud, BYOK)")
+        } footer: {
+            Text("Your key stays in the Keychain and is sent directly to your provider — never to a Solace server. No key is included with this app.")
         }
     }
 

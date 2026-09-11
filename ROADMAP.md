@@ -37,8 +37,16 @@ Build phases from the architecture spec, each gated on a concrete acceptance che
 - **Done when:** explanations are factually consistent with the underlying numbers across at least 20 varied test products (no invented figures). *(App builds and the availability-gated UI is wired end-to-end; real generation output needs Apple Intelligence-eligible hardware — manual check for the user, since this dev environment can't run/verify the actual model output.)*
 
 ## Phase 4 — Cloud AI + photo logging
-- [ ] Settings screen (profile, targets, weights, allergens, AI config)
-- [ ] `OpenAICompatibleClient`
-- [ ] Photo capture → editable draft → save flow
-- [ ] Invalid/deprecated model string → clear in-app error
-- **Done when:** a photo of a known reference meal produces an estimate within the expected ~15-30% error range, and an invalid/deprecated model string produces a clear in-app error rather than a crash. *(Automated: mocked success/error JSON unit tests; real accuracy needs the user's own API key — manual check.)*
+- [x] Settings screen: BYOK fields (endpoint URL, model string, Keychain-only API key) added alongside Phase 2's profile/targets/weights/allergens
+- [x] `CloudPhotoEstimator` (OpenAI-compatible `/chat/completions`, vision + JSON-object response)
+- [x] Photo capture (PhotosPicker) → editable draft (per-item gram steppers with live macro rescaling, confidence shown) → save flow, never auto-saves
+- [x] Invalid/deprecated model string → clear in-app error (`CloudPhotoEstimatorError.invalidOrDeprecatedModel`), not a crash
+- **Done when:** a photo of a known reference meal produces an estimate within the expected ~15-30% error range, and an invalid/deprecated model string produces a clear in-app error rather than a crash. *(Automated: 19/19 unit tests pass, including mocked success/malformed/empty-items JSON parsing. Real end-to-end accuracy needs the user's own API key and a vision-capable model — manual check.)*
+
+## Manual verification still needed from the user
+- Live barcode camera scan on a physical device (Simulator has no camera; manual-entry fallback is wired and tested)
+- Cross-device CloudKit sync (needs two iCloud-signed-in devices/simulators)
+- HealthKit write appearing correctly in the system Health app on-device
+- On-device Foundation Models output quality across varied products (needs Apple Intelligence-eligible hardware)
+- Real cloud photo-estimation accuracy against a reference meal (needs the user's own BYOK provider + model)
+- First-run Xcode/Apple ID prompts for iCloud container + HealthKit capability provisioning when archiving/running on a real device for the first time
