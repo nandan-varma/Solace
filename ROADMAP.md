@@ -11,15 +11,15 @@ Build phases from the architecture spec, each gated on a concrete acceptance che
 - **Done when:** `xcodebuild build` succeeds for an iOS Simulator destination.
 
 ## Phase 1 — Foundation
-- [ ] `@Table` models (`CachedProduct`, `CachedGenericFood`, `UserProfile`, `AIProviderSettings`, `DiaryEntry`)
-- [ ] `AppDatabase` + `SyncEngine` wiring
-- [ ] `KeychainStore` (AI key + FDC key)
-- [ ] `OpenFoodFactsClient`
-- [ ] `USDAClient`
-- [ ] `ScoringEngine` + unit tests
-- [ ] `BarcodeScannerView` (VisionKit)
-- [ ] Scan tab end-to-end + Product Detail screen
-- **Done when:** scanning a real barcode on a physical device returns and displays correct Nutri-Score/NOVA/Green-Score data, and a generic-food search returns correct USDA macros. *(Automated: unit tests over fixture data + `xcodebuild test`; live camera scan is a manual check on the user's device.)*
+- [x] `@Table` models (`CachedProduct`, `CachedGenericFood`, `UserProfile`, `AIProviderSettings`, `DiaryEntry`)
+- [x] `AppDatabase` + `SyncEngine` wiring
+- [x] `KeychainStore` (AI key + FDC key)
+- [x] `OpenFoodFactsClient` (unit-tested against a captured real Nutella response)
+- [x] `USDAClient` (unit-tested against a captured real banana search response)
+- [x] `ScoringEngine` + unit tests
+- [x] `BarcodeScannerView` (VisionKit)
+- [x] Scan tab end-to-end + Product Detail screen (manual-entry fallback for Simulator, which has no camera)
+- **Done when:** scanning a real barcode on a physical device returns and displays correct Nutri-Score/NOVA/Green-Score data, and a generic-food search returns correct USDA macros. *(Automated: 10/10 unit tests pass over real fixture data; app builds and launches in Simulator. Live camera scan on a physical device is still a manual check for the user.)*
 
 ## Phase 2 — Diary core
 - [ ] Generic-food search screen

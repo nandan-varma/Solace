@@ -15,7 +15,7 @@ struct ContentView: View {
                 TodayPlaceholderView()
             }
             Tab("Scan", systemImage: "barcode.viewfinder") {
-                ScanPlaceholderView()
+                ScanView()
             }
             Tab("Trends", systemImage: "chart.line.uptrend.xyaxis") {
                 HistoryPlaceholderView()
@@ -33,15 +33,6 @@ private struct TodayPlaceholderView: View {
         NavigationStack {
             Text("Today")
                 .navigationTitle("Solace")
-        }
-    }
-}
-
-private struct ScanPlaceholderView: View {
-    var body: some View {
-        NavigationStack {
-            Text("Scan")
-                .navigationTitle("Scan")
         }
     }
 }

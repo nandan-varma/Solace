@@ -1,0 +1,46 @@
+//
+//  KeychainStore.swift
+//  Solace
+//
+
+import Foundation
+import Security
+
+/// Generic Keychain-only credential storage. Used for the BYOK cloud AI key
+/// and the USDA FDC key — neither ever touches SQLite, UserDefaults, or a
+/// log statement.
+enum KeychainStore {
+    enum Key: String {
+        case aiProviderAPIKey = "com.nandanvarma.Solace.aiProviderAPIKey"
+        case usdaFDCAPIKey = "com.nandanvarma.Solace.usdaFDCAPIKey"
+    }
+
+    static func set(_ value: String?, for key: Key) {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: key.rawValue,
+        ]
+        SecItemDelete(query as CFDictionary)
+
+        guard let value, !value.isEmpty else { return }
+        var addQuery = query
+        addQuery[kSecValueData as String] = Data(value.utf8)
+        addQuery[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
+        SecItemAdd(addQuery as CFDictionary, nil)
+    }
+
+    static func get(_ key: Key) -> String? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: key.rawValue,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne,
+        ]
+        var item: CFTypeRef?
+        guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
+              let data = item as? Data,
+              let value = String(data: data, encoding: .utf8)
+        else { return nil }
+        return value
+    }
+}
