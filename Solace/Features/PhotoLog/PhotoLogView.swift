@@ -61,6 +61,8 @@ struct PhotoLogView: View {
                     imageData = try? await newItem?.loadTransferable(type: Data.self)
                     draft = nil
                     estimateError = nil
+                    didSave = false
+                    userContext = ""
                 }
             }
         }

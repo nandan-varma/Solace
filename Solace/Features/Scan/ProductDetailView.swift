@@ -21,7 +21,13 @@ struct ProductDetailView: View {
     var body: some View {
         Group {
             if let loadError {
-                ContentUnavailableView("Couldn't Load Product", systemImage: "wifi.slash", description: Text(loadError))
+                ContentUnavailableView {
+                    Label("Couldn't Load Product", systemImage: "wifi.slash")
+                } description: {
+                    Text(loadError)
+                } actions: {
+                    Button("Try Again") { Task { await load() } }
+                }
             } else if let product, let result {
                 content(product: product, result: result)
             } else {
@@ -121,6 +127,11 @@ struct ProductDetailView: View {
                 Text(explanation).font(.solaceBodyMd)
             } else if let explanationError {
                 Text(explanationError).font(.solaceCaption).foregroundStyle(.secondary)
+                Button("Try Again") {
+                    self.explanationError = nil
+                    Task { await explain(product: product, result: result) }
+                }
+                .font(.solaceLabel)
             } else {
                 Button {
                     Task { await explain(product: product, result: result) }
@@ -159,6 +170,7 @@ struct ProductDetailView: View {
     }
 
     private func load() async {
+        loadError = nil
         do {
             let product = try await ProductRepository.product(forBarcode: barcode)
             let profile = try await UserProfileRepository.current()

@@ -8,6 +8,7 @@ import SQLiteData
 import SwiftUI
 
 struct TodayView: View {
+    @Environment(TabRouter.self) private var router
     @FetchAll(DiaryEntry.order { $0.loggedAt.desc() }) private var allEntries
     @State private var profile: UserProfile?
     @State private var showSearch = false
@@ -93,8 +94,8 @@ struct TodayView: View {
         VStack(alignment: .leading, spacing: Spacing.sm) {
             Text("QUICK ENTRY").font(.solaceCaption).foregroundStyle(.secondary)
             HStack(spacing: Spacing.sm) {
-                NavigationLink {
-                    ScanView()
+                Button {
+                    router.selected = .scan
                 } label: {
                     Label("Scan", systemImage: "barcode.viewfinder").frame(maxWidth: .infinity)
                 }
@@ -164,4 +165,5 @@ private struct DiaryEntryRow: View {
 
 #Preview {
     TodayView()
+        .environment(TabRouter())
 }

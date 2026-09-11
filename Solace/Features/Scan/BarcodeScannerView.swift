@@ -10,6 +10,10 @@ import VisionKit
 /// Live camera barcode scanner (Section 9). Requires `NSCameraUsageDescription`,
 /// already set in the target's Info.plist build settings.
 struct BarcodeScannerView: UIViewControllerRepresentable {
+    /// Pauses live detection once a barcode's been captured (e.g. while its
+    /// Product Detail screen is showing), instead of continuing to scan in
+    /// the background and re-firing `onScan` for whatever's still in frame.
+    var isScanning: Bool
     var onScan: (String) -> Void
 
     func makeUIViewController(context: Context) -> DataScannerViewController {
@@ -24,7 +28,11 @@ struct BarcodeScannerView: UIViewControllerRepresentable {
     }
 
     func updateUIViewController(_ vc: DataScannerViewController, context: Context) {
-        try? vc.startScanning()
+        if isScanning {
+            try? vc.startScanning()
+        } else {
+            vc.stopScanning()
+        }
     }
 
     func makeCoordinator() -> Coordinator { Coordinator(onScan: onScan) }

@@ -13,6 +13,11 @@ struct SettingsView: View {
     @State private var newAllergen = ""
     @State private var aiSettings = AIProviderSettings(id: UUID())
     @State private var apiKey = ""
+    @State private var isLoaded = false
+
+    @State private var profileSaveTask: Task<Void, Never>?
+    @State private var aiSettingsSaveTask: Task<Void, Never>?
+    @State private var apiKeySaveTask: Task<Void, Never>?
 
     private static let knownDietaryFlags = ["vegan", "vegetarian", "glutenfree", "halal", "kosher"]
 
@@ -33,15 +38,36 @@ struct SettingsView: View {
                 if let loaded = try? await UserProfileRepository.current() { profile = loaded }
                 if let loadedAI = try? await AIProviderSettingsRepository.current() { aiSettings = loadedAI }
                 apiKey = KeychainStore.get(.aiProviderAPIKey) ?? ""
+                // Only start persisting once initial values are in place, so
+                // loading existing settings doesn't immediately re-save them.
+                isLoaded = true
             }
             .onChange(of: profile) { _, newValue in
-                Task { try? await UserProfileRepository.update(newValue) }
+                guard isLoaded else { return }
+                profileSaveTask?.cancel()
+                profileSaveTask = Task {
+                    try? await Task.sleep(for: .milliseconds(400))
+                    guard !Task.isCancelled else { return }
+                    try? await UserProfileRepository.update(newValue)
+                }
             }
             .onChange(of: aiSettings) { _, newValue in
-                Task { try? await AIProviderSettingsRepository.update(newValue) }
+                guard isLoaded else { return }
+                aiSettingsSaveTask?.cancel()
+                aiSettingsSaveTask = Task {
+                    try? await Task.sleep(for: .milliseconds(400))
+                    guard !Task.isCancelled else { return }
+                    try? await AIProviderSettingsRepository.update(newValue)
+                }
             }
             .onChange(of: apiKey) { _, newValue in
-                KeychainStore.set(newValue, for: .aiProviderAPIKey)
+                guard isLoaded else { return }
+                apiKeySaveTask?.cancel()
+                apiKeySaveTask = Task {
+                    try? await Task.sleep(for: .milliseconds(400))
+                    guard !Task.isCancelled else { return }
+                    KeychainStore.set(newValue, for: .aiProviderAPIKey)
+                }
             }
         }
     }

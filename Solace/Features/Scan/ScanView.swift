@@ -14,7 +14,7 @@ struct ScanView: View {
         NavigationStack {
             Group {
                 if BarcodeScannerAvailability.isSupported {
-                    BarcodeScannerView { barcode in
+                    BarcodeScannerView(isScanning: scannedBarcode == nil) { barcode in
                         guard scannedBarcode == nil else { return }
                         scannedBarcode = barcode
                     }
