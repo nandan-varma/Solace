@@ -127,7 +127,7 @@ struct OnboardingView: View {
                     if step == 0 {
                         Button("Skip setup") { Task { await finish(skip: true) } }
                             .frame(minHeight: 44)
-                            .disabled(profile == nil || isSaving)
+                            .disabled(isSaving)
                     }
                 }
                 .padding(.horizontal, 24).padding(.vertical, 12)
@@ -177,11 +177,15 @@ struct OnboardingView: View {
     }
 
     private func finish(skip: Bool = false) async {
-        guard var profile, !isSaving else { return }
+        guard !isSaving else { return }
+        // Skipping doesn't require the profile to have loaded — it just
+        // moves past setup without persisting anything, so a failed load
+        // shouldn't be a dead end.
+        guard skip || profile != nil else { return }
         isSaving = true
         defer { isSaving = false }
         do {
-            if !skip {
+            if !skip, var profile {
                 guard validTarget else { return }
                 profile.allergenExclusions = allergens.sorted()
                 profile.dietaryFlags = diets.sorted()

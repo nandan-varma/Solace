@@ -159,6 +159,7 @@ enum DevDataSeeder {
         }
         KeychainStore.set(nil, for: .aiProviderAPIKey)
         KeychainStore.set(nil, for: .usdaFDCAPIKey)
+        UserDefaults.standard.set(false, forKey: "hasCompletedOnboarding")
     }
 }
 

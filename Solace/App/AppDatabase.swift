@@ -30,9 +30,6 @@ extension DependencyValues {
                 }
             #endif
         }
-        let database = try SQLiteData.defaultDatabase(configuration: configuration)
-        logger.info("open '\(database.path)'")
-
         var migrator = DatabaseMigrator()
         #if DEBUG
             migrator.eraseDatabaseOnSchemaChange = true
@@ -147,12 +144,44 @@ extension DependencyValues {
             )
             .execute(db)
         }
-        try migrator.migrate(database)
+
+        // An unopenable/corrupt database file would otherwise crash at
+        // every launch with no recovery path. Since the three synced tables
+        // repopulate from CloudKit, it's safe to fall back to a fresh local
+        // database rather than abort.
+        let database: any DatabaseWriter
+        do {
+            let opened = try SQLiteData.defaultDatabase(configuration: configuration)
+            try migrator.migrate(opened)
+            database = opened
+        } catch {
+            logger.error("failed to open/migrate database, resetting local file: \(error)")
+            try deleteDefaultDatabaseFile()
+            let opened = try SQLiteData.defaultDatabase(configuration: configuration)
+            try migrator.migrate(opened)
+            database = opened
+        }
+        logger.info("open '\(database.path)'")
 
         defaultDatabase = database
         defaultSyncEngine = try SyncEngine(
             for: database,
             tables: UserProfile.self, AIProviderSettings.self, DiaryEntry.self
         )
+    }
+}
+
+/// Removes the on-disk database file (and its WAL/SHM siblings) so a corrupt
+/// file doesn't wedge every future launch. Only relevant in a live app
+/// context — previews/tests use in-memory or temporary databases.
+private func deleteDefaultDatabaseFile() throws {
+    @Dependency(\.context) var context
+    guard context == .live else { return }
+    let directory = try FileManager.default.url(
+        for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true
+    )
+    let base = directory.appendingPathComponent("SQLiteData.db")
+    for suffix in ["", "-wal", "-shm"] {
+        try? FileManager.default.removeItem(at: URL(fileURLWithPath: base.path + suffix))
     }
 }
