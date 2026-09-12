@@ -49,7 +49,7 @@ Pure, synchronous, unit-tested. Evaluation order:
 - **Tier 1 (on-device, default on)**: Apple Foundation Models, gated on `SystemLanguageModel.default.availability` (iOS 26 floor does not guarantee Apple Intelligence-eligible hardware) and `UserProfile.onDeviceAIEnabled`. Used only for explaining an already-computed score — never invents nutrition numbers.
 - **Tier 2 (cloud, opt-in, BYOK)**: only active once `AIProviderSettings.isEnabled` and a Keychain key exist. User supplies base URL, model string, and key — no embedded developer key. Powers photo-based food estimation; every result is an editable draft, never auto-logged.
 
-## Known risks (carried from spec, see ROADMAP.md for status)
+## Known risks
 
 - Nutri-Score algorithm version mixing (`CachedProduct.nutriscoreVersion` exists specifically to detect and surface this, not hide it).
 - `DiaryEntry` can reference a cache row that doesn't exist on the syncing device — every read path needs a cache-miss → re-fetch fallback.

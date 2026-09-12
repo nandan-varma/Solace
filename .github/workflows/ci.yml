@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: macos-26
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_26.6.app
+
+      - name: Resolve a simulator destination
+        id: destination
+        run: |
+          UDID=$(xcrun simctl list devices available iPhone -j \
+            | python3 -c "import json,sys; devs=[d for r in json.load(sys.stdin)['devices'].values() for d in r]; print(devs[0]['udid'])")
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        run: |
+          xcodebuild build \
+            -project Solace.xcodeproj \
+            -scheme Solace \
+            -destination "id=${{ steps.destination.outputs.udid }}"
+
+      - name: Test
+        run: |
+          xcodebuild test \
+            -project Solace.xcodeproj \
+            -scheme Solace \
+            -destination "id=${{ steps.destination.outputs.udid }}"
