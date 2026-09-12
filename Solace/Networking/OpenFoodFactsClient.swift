@@ -17,7 +17,7 @@ enum OpenFoodFactsError: Error, Equatable {
 enum OpenFoodFactsClient {
     /// Required by OFF's API policy: identifies the app + a contact so
     /// misbehaving clients can be reached, not sent anywhere else.
-    static let userAgent = "Solace/1.0 (nandanvarma.me@gmail.com)"
+    static let userAgent = "Solace/1.0 (contact@nandan.fyi)"
 
     static func fetchProduct(barcode: String) async throws -> CachedProduct {
         var request = URLRequest(

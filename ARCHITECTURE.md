@@ -75,7 +75,7 @@ strings; they aren't present). They provide:
 
 ## External data sources
 
-- Open Food Facts API v3 (`world.openfoodfacts.org`) — ODbL, custom `User-Agent: Solace/<version> (nandanvarma.me@gmail.com)` required, attribution shown in-app.
+- Open Food Facts API v3 (`world.openfoodfacts.org`) — ODbL, custom `User-Agent: Solace/<version> (contact@nandan.fyi)` required, attribution shown in-app.
 - USDA FoodData Central API (`api.nal.usda.gov`) — public domain, BYOK header, `DEMO_KEY` fallback.
 
 ## First launch and interface behavior
