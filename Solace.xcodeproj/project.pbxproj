@@ -416,6 +416,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Solace uses the camera to scan product barcodes and to estimate nutrition from meal photos.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Solace does not read any data from Health.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Solace writes what you log in your diary to Health as dietary energy and macros.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -454,6 +455,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Solace uses the camera to scan product barcodes and to estimate nutrition from meal photos.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Solace does not read any data from Health.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Solace writes what you log in your diary to Health as dietary energy and macros.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
