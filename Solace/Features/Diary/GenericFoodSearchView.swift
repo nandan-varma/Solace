@@ -62,8 +62,16 @@ struct GenericFoodSearchView: View {
             .task {
                 guard !didFocusSearch else { return }
                 didFocusSearch = true
-                try? await Task.sleep(for: .milliseconds(50))
-                searchFocused = true
+                // Toggle off/on each attempt: reassigning `true` when it's
+                // already `true` is a no-op, so a single delayed assignment
+                // can silently miss the moment the search field becomes
+                // focusable during the sheet's presentation animation.
+                for _ in 0..<10 {
+                    searchFocused = false
+                    try? await Task.sleep(for: .milliseconds(30))
+                    searchFocused = true
+                    try? await Task.sleep(for: .milliseconds(60))
+                }
             }
             .onDisappear {
                 searchTask?.cancel()

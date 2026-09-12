@@ -5,34 +5,97 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
 
 jobs:
-  build-and-test:
+  unit-tests:
+    name: Build & unit tests
     runs-on: macos-26
-
     steps:
       - uses: actions/checkout@v4
 
-      - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode_26.6.app
+      - name: Cache resolved Swift packages
+        uses: actions/cache@v4
+        with:
+          path: DerivedData/SourcePackages
+          key: spm-${{ hashFiles('Solace.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          restore-keys: spm-
 
       - name: Resolve a simulator destination
         id: destination
         run: |
-          UDID=$(xcrun simctl list devices available iPhone -j \
-            | python3 -c "import json,sys; devs=[d for r in json.load(sys.stdin)['devices'].values() for d in r]; print(devs[0]['udid'])")
+          UDID=$(xcodebuild -showdestinations -project Solace.xcodeproj -scheme Solace 2>/dev/null \
+            | grep -E "platform:iOS Simulator, .*OS:" \
+            | grep -vi ipad \
+            | head -1 \
+            | sed -E 's/.*id:([0-9A-Fa-f-]+).*/\1/')
+          if [ -z "$UDID" ]; then echo "No iOS Simulator destination found" >&2; exit 1; fi
           echo "udid=$UDID" >> "$GITHUB_OUTPUT"
 
-      - name: Build
+      - name: Build for testing
         run: |
-          xcodebuild build \
+          xcodebuild build-for-testing \
             -project Solace.xcodeproj \
             -scheme Solace \
-            -destination "id=${{ steps.destination.outputs.udid }}"
+            -destination "id=${{ steps.destination.outputs.udid }}" \
+            -derivedDataPath DerivedData \
+            -only-testing:SolaceTests
 
-      - name: Test
+      - name: Run unit tests
         run: |
-          xcodebuild test \
+          xcodebuild test-without-building \
             -project Solace.xcodeproj \
             -scheme Solace \
-            -destination "id=${{ steps.destination.outputs.udid }}"
+            -destination "id=${{ steps.destination.outputs.udid }}" \
+            -derivedDataPath DerivedData \
+            -only-testing:SolaceTests
+
+  ui-tests:
+    name: UI tests (manual)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache resolved Swift packages
+        uses: actions/cache@v4
+        with:
+          path: DerivedData/SourcePackages
+          key: spm-${{ hashFiles('Solace.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          restore-keys: spm-
+
+      - name: Resolve a simulator destination
+        id: destination
+        run: |
+          UDID=$(xcodebuild -showdestinations -project Solace.xcodeproj -scheme Solace 2>/dev/null \
+            | grep -E "platform:iOS Simulator, .*OS:" \
+            | grep -vi ipad \
+            | head -1 \
+            | sed -E 's/.*id:([0-9A-Fa-f-]+).*/\1/')
+          if [ -z "$UDID" ]; then echo "No iOS Simulator destination found" >&2; exit 1; fi
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+
+      - name: Build for testing
+        run: |
+          xcodebuild build-for-testing \
+            -project Solace.xcodeproj \
+            -scheme Solace \
+            -destination "id=${{ steps.destination.outputs.udid }}" \
+            -derivedDataPath DerivedData \
+            -only-testing:SolaceUITests
+
+      - name: Run UI tests
+        run: |
+          xcodebuild test-without-building \
+            -project Solace.xcodeproj \
+            -scheme Solace \
+            -destination "id=${{ steps.destination.outputs.udid }}" \
+            -derivedDataPath DerivedData \
+            -only-testing:SolaceUITests

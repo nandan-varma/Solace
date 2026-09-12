@@ -117,13 +117,17 @@ struct ScanView: View {
                 }
             }
             .task {
-                // A single `Task.yield()` isn't enough for the field to be
-                // focusable the instant the sheet's presentation animation
-                // starts — retry for a bit so focus reliably lands without
-                // requiring an extra tap.
-                for _ in 0..<20 {
+                // Setting `barcodeFocused = true` repeatedly is a no-op once
+                // it's already `true` — SwiftUI only re-applies focus on an
+                // actual value change — so if the first attempt lands before
+                // the sheet's presentation animation makes the field
+                // focusable, later identical assignments don't retry
+                // anything. Toggle off/on each attempt to force a real diff.
+                for _ in 0..<10 {
+                    barcodeFocused = false
+                    try? await Task.sleep(for: .milliseconds(30))
                     barcodeFocused = true
-                    try? await Task.sleep(for: .milliseconds(50))
+                    try? await Task.sleep(for: .milliseconds(60))
                 }
             }
             .navigationTitle("Enter Barcode")
