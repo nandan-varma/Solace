@@ -49,7 +49,7 @@ struct GenericFoodSearchView: View {
             .scrollDismissesKeyboard(.interactively)
             .navigationDestination(for: CachedGenericFood.self) { food in
                 GenericFoodDetailView(food: food, onDone: { dismiss() })
-                    .onAppear { searchFocused = false }
+                    .onAppear { DispatchQueue.main.async { searchFocused = false } }
             }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -62,7 +62,7 @@ struct GenericFoodSearchView: View {
             .task {
                 guard !didFocusSearch else { return }
                 didFocusSearch = true
-                await Task.yield()
+                try? await Task.sleep(for: .milliseconds(50))
                 searchFocused = true
             }
             .onDisappear {
@@ -70,7 +70,7 @@ struct GenericFoodSearchView: View {
                 isSearching = false
                 isPending = false
             }
-            .onChange(of: query) { _, _ in runSearch(debounced: true) }
+            .onChange(of: query) { _, _ in Task { runSearch(debounced: true) } }
             .onSubmit(of: .search) {
                 searchFocused = false
                 runSearch(debounced: false)
@@ -96,9 +96,7 @@ struct GenericFoodSearchView: View {
             isSearching = false
             return
         }
-        results = []
         searchError = nil
-        isSearching = false
         isPending = true
         searchTask = Task {
             if debounced {
