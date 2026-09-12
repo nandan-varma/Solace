@@ -1,0 +1,27 @@
+---
+const links = [
+	{ href: '/#features', label: 'Features' },
+	{ href: '/#faq', label: 'FAQ' },
+	{ href: '/support', label: 'Support' },
+];
+---
+
+<header class="border-b border-white/10">
+	<div class="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
+		<a href="/" class="flex items-center gap-2 font-semibold tracking-tight">
+			<img src="/icons/icon-192.png" alt="" width="28" height="28" class="rounded-lg" />
+			Solace
+		</a>
+		<nav class="hidden items-center gap-6 text-sm text-neutral-300 sm:flex">
+			{links.map((link) => (
+				<a href={link.href} class="transition hover:text-white">{link.label}</a>
+			))}
+		</nav>
+		<a
+			href="https://github.com/nandan-varma/Solace"
+			class="rounded-full border border-white/15 px-4 py-1.5 text-sm text-neutral-200 transition hover:border-white/30 hover:text-white"
+		>
+			GitHub
+		</a>
+	</div>
+</header>

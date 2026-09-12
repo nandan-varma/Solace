@@ -1,15 +1,118 @@
 ---
-import '../styles/global.css';
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+const features = [
+	{
+		title: 'Scan any barcode',
+		body: 'Point your camera at a product to get its Nutri-Score, NOVA, and Green-Score badges instantly, backed by Open Food Facts.',
+	},
+	{
+		title: 'Log a meal from a photo',
+		body: 'Snap a plate and get an editable macro estimate. Nothing is ever auto-logged — you review every draft before it’s saved.',
+	},
+	{
+		title: 'Safety first, always',
+		body: 'Every scan is checked against your allergens and diet exclusions before a health score is even shown.',
+	},
+	{
+		title: 'On-device AI explanations',
+		body: 'Apple Intelligence explains why a food scored the way it did, entirely on your device — no data leaves your phone.',
+	},
+	{
+		title: 'Syncs with Health',
+		body: 'Opt in to write logged calories and macros straight to Apple Health. One-way, and only what you choose to log.',
+	},
+	{
+		title: 'Your data, your iCloud',
+		body: 'Everything syncs across your devices with your own iCloud account via CloudKit. Solace has no servers and no database of its own.',
+	},
+];
+
+const faqs = [
+	{
+		q: 'Is Solace really free?',
+		a: 'Yes. There is no subscription, no paywall, and no ads. It’s free and open source.',
+	},
+	{
+		q: 'Do I need to create an account?',
+		a: 'No. Solace syncs through your existing iCloud account via CloudKit — there’s no separate sign-up or Solace-hosted backend.',
+	},
+	{
+		q: 'What is the optional cloud AI for?',
+		a: 'Photo-based meal logging can use a cloud AI provider you configure yourself (bring your own API key). Barcode scanning and on-device explanations never need it.',
+	},
+	{
+		q: 'Is my health data shared with anyone?',
+		a: 'No. HealthKit writes are one-way and opt-in, and your diary data syncs only through your own iCloud account — Solace has no server to share it from.',
+	},
+];
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Solace</title>
-	</head>
-	<body class="flex min-h-screen items-center justify-center bg-neutral-950 text-neutral-100">
-		<h1 class="text-2xl font-semibold">Solace — coming soon</h1>
-	</body>
-</html>
+<BaseLayout
+	title="Solace — AI food scanner & diary for iOS"
+	description="Scan a barcode or snap a photo to see Nutri-Score, NOVA, and Green-Score instantly. Free, open-source, on-device AI, no subscription."
+>
+	<section class="mx-auto max-w-5xl px-6 pt-20 pb-24 text-center sm:pt-28">
+		<img src="/icons/icon-192.png" alt="Solace app icon" width="88" height="88" class="mx-auto mb-8 rounded-2xl shadow-lg shadow-emerald-950/40" />
+		<h1 class="text-4xl font-semibold tracking-tight text-white sm:text-6xl">
+			Know what’s in your food.
+		</h1>
+		<p class="mx-auto mt-6 max-w-2xl text-lg text-neutral-400">
+			Solace is an AI-native food scanner and diary for iOS. Scan a barcode or snap a photo,
+			see Nutri-Score, NOVA, and Green-Score instantly, and log it to Health — free, private,
+			and open source.
+		</p>
+		<div class="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+			<span class="inline-flex items-center gap-2 rounded-full bg-white/5 px-5 py-3 text-sm font-medium text-neutral-300 ring-1 ring-white/10">
+				Coming soon to the App Store
+			</span>
+			<a
+				href="https://github.com/nandan-varma/Solace"
+				class="rounded-full bg-emerald-500 px-5 py-3 text-sm font-medium text-emerald-950 transition hover:bg-emerald-400"
+			>
+				View source on GitHub
+			</a>
+		</div>
+	</section>
+
+	<section id="features" class="border-t border-white/10 bg-white/[0.02] py-24">
+		<div class="mx-auto max-w-5xl px-6">
+			<h2 class="text-center text-3xl font-semibold tracking-tight text-white">Everything you need to eat with confidence</h2>
+			<div class="mt-14 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+				{features.map((f) => (
+					<div class="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+						<h3 class="font-medium text-white">{f.title}</h3>
+						<p class="mt-2 text-sm leading-relaxed text-neutral-400">{f.body}</p>
+					</div>
+				))}
+			</div>
+		</div>
+	</section>
+
+	<section class="py-24">
+		<div class="mx-auto max-w-3xl px-6 text-center">
+			<h2 class="text-3xl font-semibold tracking-tight text-white">No paid tier. No catch.</h2>
+			<p class="mt-4 text-neutral-400">
+				Solace is completely free and <a href="https://github.com/nandan-varma/Solace" class="text-emerald-400 underline underline-offset-4 hover:text-emerald-300">open source</a>.
+				There’s nothing to unlock, nothing to subscribe to, and no ads — review the code yourself if you want to know exactly how your data is handled.
+			</p>
+		</div>
+	</section>
+
+	<section id="faq" class="border-t border-white/10 py-24">
+		<div class="mx-auto max-w-3xl px-6">
+			<h2 class="text-center text-3xl font-semibold tracking-tight text-white">Frequently asked questions</h2>
+			<dl class="mt-12 space-y-8">
+				{faqs.map((item) => (
+					<div>
+						<dt class="font-medium text-white">{item.q}</dt>
+						<dd class="mt-2 text-sm leading-relaxed text-neutral-400">{item.a}</dd>
+					</div>
+				))}
+			</dl>
+			<p class="mt-10 text-center text-sm text-neutral-500">
+				More questions? Visit <a href="/support" class="text-emerald-400 underline underline-offset-4 hover:text-emerald-300">Support</a>.
+			</p>
+		</div>
+	</section>
+</BaseLayout>

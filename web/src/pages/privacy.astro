@@ -1,0 +1,99 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+const lastUpdated = 'September 11, 2026';
+---
+
+<BaseLayout
+	title="Privacy Policy — Solace"
+	description="Solace has no servers and collects no personal data. Read exactly what stays on your device, what syncs via your own iCloud, and what a BYOK AI provider sees."
+	path="/privacy"
+>
+	<section class="mx-auto max-w-3xl px-6 py-20">
+		<h1 class="text-4xl font-semibold tracking-tight text-white">Privacy Policy</h1>
+		<p class="mt-2 text-sm text-neutral-500">Last updated {lastUpdated}</p>
+
+		<div class="mt-10 space-y-10 text-neutral-300">
+			<p>
+				Solace is built to work without a backend. There is no Solace server, no analytics
+				pipeline, and no account system — this policy explains exactly where your data goes
+				instead.
+			</p>
+
+			<div>
+				<h2 class="text-xl font-medium text-white">What stays only on your device</h2>
+				<p class="mt-3 leading-relaxed">
+					Your Keychain-stored credentials (an optional cloud AI provider key and, if you set
+					one, your own USDA FoodData Central key) never leave your device and are never
+					included in iCloud sync, logs, crash reports, or analytics of any kind.
+				</p>
+			</div>
+
+			<div>
+				<h2 class="text-xl font-medium text-white">What syncs via your iCloud account</h2>
+				<p class="mt-3 leading-relaxed">
+					Your profile (body stats, activity level, allergen and diet exclusions, scoring
+					weights), your diary entries, and your AI provider configuration (excluding the key
+					itself) sync across your devices using Apple's CloudKit, under your own iCloud
+					account. Solace cannot access this data — it is stored in your personal iCloud
+					container, the same as Photos or Notes.
+				</p>
+			</div>
+
+			<div>
+				<h2 class="text-xl font-medium text-white">Apple Health</h2>
+				<p class="mt-3 leading-relaxed">
+					If you opt in, Solace writes the calories and macros you log to Apple Health. This is
+					one-way and write-only — Solace does not read existing Health data, and nothing you
+					log to Health is sent anywhere else.
+				</p>
+			</div>
+
+			<div>
+				<h2 class="text-xl font-medium text-white">Camera and photos</h2>
+				<p class="mt-3 leading-relaxed">
+					The camera is used to scan barcodes and, if you choose, to capture a meal photo for AI
+					estimation. Barcode scans are processed on-device. A meal photo is only sent off-device
+					if you have explicitly enabled and configured a cloud AI provider (see below) — otherwise
+					no photo ever leaves your phone.
+				</p>
+			</div>
+
+			<div>
+				<h2 class="text-xl font-medium text-white">Third-party data sources</h2>
+				<p class="mt-3 leading-relaxed">
+					Barcode lookups query <a href="https://world.openfoodfacts.org" class="text-emerald-400 underline underline-offset-4 hover:text-emerald-300">Open Food Facts</a>,
+					a crowd-sourced, non-commercial database, and generic food search queries the <a href="https://fdc.nal.usda.gov" class="text-emerald-400 underline underline-offset-4 hover:text-emerald-300">USDA FoodData Central</a> API, a US government public-domain database.
+					These lookups send only the barcode or search term you enter — no account or profile
+					data is attached.
+				</p>
+			</div>
+
+			<div>
+				<h2 class="text-xl font-medium text-white">Optional cloud AI (bring your own key)</h2>
+				<p class="mt-3 leading-relaxed">
+					Photo-based meal estimation is optional and off by default. If you enable it, you
+					supply your own AI provider endpoint, model, and API key, and Solace sends the photo
+					you choose to log directly to that provider on your behalf. No embedded or
+					Solace-operated AI key is ever used, and estimates are always shown as an editable
+					draft — never saved automatically.
+				</p>
+			</div>
+
+			<div>
+				<h2 class="text-xl font-medium text-white">Changes to this policy</h2>
+				<p class="mt-3 leading-relaxed">
+					If this policy changes, the "last updated" date above will change and the new version
+					will be published at this same URL.
+				</p>
+			</div>
+
+			<div>
+				<h2 class="text-xl font-medium text-white">Contact</h2>
+				<p class="mt-3 leading-relaxed">
+					Questions about this policy: <a href="mailto:nandanvarma.me@gmail.com" class="text-emerald-400 underline underline-offset-4 hover:text-emerald-300">nandanvarma.me@gmail.com</a>.
+				</p>
+			</div>
+		</div>
+	</section>
+</BaseLayout>

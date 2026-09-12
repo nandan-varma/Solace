@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://solace.nandan.fyi/sitemap-index.xml

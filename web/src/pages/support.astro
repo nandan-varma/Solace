@@ -1,0 +1,58 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+const faqs = [
+	{
+		q: 'How do I report a bug or request a feature?',
+		a: 'Open an issue on GitHub, or email nandanvarma.me@gmail.com. Since Solace is open source, GitHub issues are the fastest way to get a fix considered.',
+	},
+	{
+		q: 'Why does a product show no score?',
+		a: 'Some barcodes aren’t yet in Open Food Facts, or the cached data is missing key nutrition fields. Missing values are shown as unavailable rather than guessed.',
+	},
+	{
+		q: 'How accurate is photo-based logging?',
+		a: 'Expect roughly ±15–30% error for a single item, and more for composed dishes — it’s a published limitation of AI photo estimation, not a bug. Every estimate is an editable draft you confirm before saving, and portion amounts can always be corrected by hand.',
+	},
+	{
+		q: 'Why does Solace ask for a Health permission?',
+		a: 'Only if you opt in, to write the calories and macros you log to Apple Health. It’s write-only — Solace never reads your existing Health data.',
+	},
+	{
+		q: 'I set up a cloud AI provider and it’s not working.',
+		a: 'Double-check the endpoint URL, model string, and API key in Settings. An invalid or deprecated model string surfaces a clear in-app error rather than failing silently — if you see something else, please report it.',
+	},
+	{
+		q: 'Does my data sync across my devices?',
+		a: 'Yes, automatically, via CloudKit under your own iCloud account — as long as you’re signed into the same iCloud account and it isn’t disabled for the app in iOS Settings.',
+	},
+	{
+		q: 'How do I delete my data?',
+		a: 'Delete the app to remove all local data. Since sync uses your own iCloud account, you can also manage or delete Solace’s iCloud data from Settings → [your name] → iCloud → Manage Account Storage on your device.',
+	},
+];
+---
+
+<BaseLayout
+	title="Support — Solace"
+	description="Get help with Solace: report a bug, ask a question, or browse frequently asked questions."
+	path="/support"
+>
+	<section class="mx-auto max-w-3xl px-6 py-20">
+		<h1 class="text-4xl font-semibold tracking-tight text-white">Support</h1>
+		<p class="mt-4 leading-relaxed text-neutral-400">
+			Need help with Solace? Email <a href="mailto:nandanvarma.me@gmail.com" class="text-emerald-400 underline underline-offset-4 hover:text-emerald-300">nandanvarma.me@gmail.com</a> or open an issue on <a href="https://github.com/nandan-varma/Solace/issues" class="text-emerald-400 underline underline-offset-4 hover:text-emerald-300">GitHub</a>.
+			Include your iOS version and, if it's a bug, steps to reproduce it.
+		</p>
+
+		<h2 class="mt-16 text-2xl font-semibold tracking-tight text-white">Frequently asked questions</h2>
+		<dl class="mt-8 space-y-8">
+			{faqs.map((item) => (
+				<div>
+					<dt class="font-medium text-white">{item.q}</dt>
+					<dd class="mt-2 text-sm leading-relaxed text-neutral-400">{item.a}</dd>
+				</div>
+			))}
+		</dl>
+	</section>
+</BaseLayout>
