@@ -18,6 +18,7 @@ struct TodayView: View {
     @ScaledMetric(relativeTo: .body) private var energyRingSize = 128
     @State private var showSearch = false
     @State private var showPhotoLog = false
+    @State private var attemptedRefetch: Set<String> = []
 
     private var todaysEntries: [DiaryEntry] {
         let calendar = Calendar.current
@@ -245,12 +246,33 @@ struct TodayView: View {
                 )
                 .padding(.horizontal, Spacing.md)
                 .padding(.vertical, Spacing.sm)
+                .task(id: entry.id) { await refetchIfNeeded(entry) }
                 if index < entries.count - 1 {
                     Divider().padding(.leading, Spacing.md)
                 }
             }
         }
         .solaceCard()
+    }
+
+    /// A `DiaryEntry` can reference a cache row this device never synced
+    /// (e.g. logged on another device via CloudKit) — re-fetch it once so
+    /// the row shows a real name instead of a permanent placeholder.
+    private func refetchIfNeeded(_ entry: DiaryEntry) async {
+        switch entry.sourceKind {
+        case "product":
+            guard let barcode = entry.sourceBarcode, productNamesByBarcode[barcode] == nil,
+                  attemptedRefetch.insert("product:\(barcode)").inserted
+            else { return }
+            _ = try? await ProductRepository.product(forBarcode: barcode)
+        case "genericFood":
+            guard let fdcId = entry.sourceFdcId, genericFoodNamesByID[fdcId] == nil,
+                  attemptedRefetch.insert("genericFood:\(fdcId)").inserted
+            else { return }
+            _ = try? await GenericFoodRepository.food(forFdcId: fdcId)
+        default:
+            break
+        }
     }
 
     private func name(for entry: DiaryEntry) -> String {

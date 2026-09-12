@@ -22,7 +22,7 @@ nonisolated struct UserProfile: Codable, Identifiable, Equatable, Sendable {
     var dietaryFlagsJSON: String = "[]"      // vegan, vegetarian, halal, kosher, glutenFree...
     var nutriScoreWeight: Double = 0.40
     var novaWeight: Double = 0.25
-    var greenScoreWeight: Double = 0.15
+    var ecoScoreWeight: Double = 0.15
     var personalGoalWeight: Double = 0.20
     var healthKitSyncEnabled: Bool = false
     var onDeviceAIEnabled: Bool = true

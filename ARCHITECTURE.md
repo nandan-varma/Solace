@@ -9,7 +9,7 @@ Features/            SwiftUI screens (Today, Scan, Diary, History, Settings, Pho
    ↓ reads/writes
 Models/               @Table structs (SQLiteData) — the single source of truth
    ↑ populated by
-Networking/           OpenFoodFactsClient, USDAClient, OpenAICompatibleClient, KeychainStore
+Networking/           OpenFoodFactsClient, USDAClient, ProductRepository, GenericFoodRepository, KeychainStore
 Scoring/               ScoringEngine — pure function over Models, no I/O
 AI/                     OnDeviceExplainer (Foundation Models), CloudPhotoEstimator (BYOK)
 HealthKit/              HealthKitManager — one-way write of DiaryEntry → Health
@@ -41,7 +41,7 @@ All three converge on the same `DiaryEntry` table, which drives Today's totals, 
 
 Pure, synchronous, unit-tested. Evaluation order:
 1. **Safety first, unconditionally** — cross-reference allergens/diet flags against `UserProfile`. Any hit → `SafetyFlag`s returned, composite score suppressed regardless of how "healthy" the product otherwise looks.
-2. Nutri-Score / NOVA / Green-Score passed through as their own badges — never reskinned or recolored beyond their certified palettes.
+2. Nutri-Score / NOVA / Eco-Score passed through as their own badges — never reskinned or recolored beyond their certified palettes.
 3. If safe, a weighted composite `matchScore` (0-100) from `UserProfile`'s editable weights, with the full per-factor `breakdown` always available (never hidden behind the top-line number).
 
 ## AI: two independent tiers

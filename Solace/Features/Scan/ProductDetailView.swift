@@ -19,6 +19,7 @@ struct ProductDetailView: View {
     @State private var explanation: String?
     @State private var explanationError: String?
     @State private var isExplaining = false
+    @State private var explainTask: Task<Void, Never>?
 
     var body: some View {
         Group {
@@ -41,6 +42,7 @@ struct ProductDetailView: View {
         .navigationTitle("Product Evaluation")
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
+        .onDisappear { explainTask?.cancel() }
     }
 
     private func content(product: CachedProduct, result: ScoreResult) -> some View {
@@ -57,9 +59,9 @@ struct ProductDetailView: View {
                 }
 
                 (dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: Spacing.lg)) : AnyLayout(HStackLayout(spacing: Spacing.xl))) {
-                    NutriScoreBadge(grade: result.nutriScoreGrade)
+                    NutriScoreBadge(grade: result.nutriScoreGrade, version: product.nutriscoreVersion)
                     NovaBadge(group: result.novaGroup)
-                    GreenScoreBadge(grade: result.greenScoreGrade)
+                    EcoScoreBadge(grade: result.ecoScoreGrade)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(Spacing.lg)
@@ -101,7 +103,7 @@ struct ProductDetailView: View {
                 .font(.solaceCaption)
                 .foregroundStyle(.secondary)
             Spacer()
-            Label("Open Food Facts v3", systemImage: "checkmark.seal.fill")
+            Label("Open Food Facts", systemImage: "checkmark.seal.fill")
                 .font(.solaceCaption)
                 .foregroundStyle(Color.solaceVitality)
         }
@@ -180,19 +182,23 @@ struct ProductDetailView: View {
         switch factor {
         case "Nutri-Score": return .solaceVitality
         case "NOVA": return .solaceWarning
-        case "Green-Score": return .solaceInteractive
+        case "Eco-Score": return .solaceInteractive
         default: return .solaceAI
         }
     }
 
     private func breakdownList(_ breakdown: [String: Double]) -> some View {
-        VStack(alignment: .leading, spacing: Spacing.sm) {
+        // Contributions are weight × component, so displaying them raw reads
+        // like the factor's own 0-100 score. Showing each as a share of the
+        // total makes clear it's this factor's slice of the composite.
+        let total = breakdown.values.reduce(0, +)
+        return VStack(alignment: .leading, spacing: Spacing.sm) {
             ForEach(breakdown.sorted(by: { $0.key < $1.key }), id: \.key) { factor, contribution in
                 HStack(spacing: Spacing.xs) {
                     Circle().fill(breakdownColor(for: factor)).frame(width: 6, height: 6)
                     Text(factor).font(.solaceLabel)
                     Spacer()
-                    Text(contribution, format: .number.precision(.fractionLength(1)))
+                    Text(total > 0 ? contribution / total : 0, format: .percent.precision(.fractionLength(0)))
                         .font(.solaceLabel)
                         .foregroundStyle(.secondary)
                         .tabularNumbers()
@@ -213,12 +219,12 @@ struct ProductDetailView: View {
                 Text(explanationError).font(.solaceCaption).foregroundStyle(.secondary)
                 Button("Try Again") {
                     self.explanationError = nil
-                    Task { await explain(product: product, result: result) }
+                    explainTask = Task { await explain(product: product, result: result) }
                 }
                 .font(.solaceLabel)
             } else {
                 Button {
-                    Task { await explain(product: product, result: result) }
+                    explainTask = Task { await explain(product: product, result: result) }
                 } label: {
                     if isExplaining {
                         ProgressView().tint(.white)
@@ -249,12 +255,16 @@ struct ProductDetailView: View {
         isExplaining = true
         defer { isExplaining = false }
         do {
-            explanation = try await OnDeviceExplainer.explain(food: product.scoringInput, result: result)
+            let text = try await OnDeviceExplainer.explain(food: product.scoringInput, result: result)
+            guard !Task.isCancelled else { return }
+            explanation = text
         } catch let error as OnDeviceExplainerError {
+            guard !Task.isCancelled else { return }
             if case .unavailable(let reason) = error {
                 explanationError = reason.userFacingMessage
             }
         } catch {
+            guard !Task.isCancelled else { return }
             explanationError = error.localizedDescription
         }
     }

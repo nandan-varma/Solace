@@ -44,7 +44,7 @@ extension DependencyValues {
                   "nutriscoreGrade" TEXT,
                   "nutriscoreVersion" TEXT,
                   "novaGroup" INTEGER,
-                  "greenScoreGrade" TEXT,
+                  "ecoScoreGrade" TEXT,
                   "energyKcal100g" REAL,
                   "proteins100g" REAL,
                   "carbohydrates100g" REAL,
@@ -94,7 +94,7 @@ extension DependencyValues {
                   "dietaryFlagsJSON" TEXT NOT NULL ON CONFLICT REPLACE DEFAULT '[]',
                   "nutriScoreWeight" REAL NOT NULL ON CONFLICT REPLACE DEFAULT 0.40,
                   "novaWeight" REAL NOT NULL ON CONFLICT REPLACE DEFAULT 0.25,
-                  "greenScoreWeight" REAL NOT NULL ON CONFLICT REPLACE DEFAULT 0.15,
+                  "ecoScoreWeight" REAL NOT NULL ON CONFLICT REPLACE DEFAULT 0.15,
                   "personalGoalWeight" REAL NOT NULL ON CONFLICT REPLACE DEFAULT 0.20,
                   "healthKitSyncEnabled" INTEGER NOT NULL ON CONFLICT REPLACE DEFAULT 0,
                   "onDeviceAIEnabled" INTEGER NOT NULL ON CONFLICT REPLACE DEFAULT 1

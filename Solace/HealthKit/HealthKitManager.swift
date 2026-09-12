@@ -5,15 +5,16 @@
 
 import Foundation
 import HealthKit
+import os
 
 /// Opt-in, write-only sync of diary entries into Health (Section 8). Never
 /// reads HealthKit data back into the app — App Review checks that
 /// HealthKit-sourced data doesn't leave the device, and this app has no
 /// reason to read it in the first place.
-final class HealthKitManager: @unchecked Sendable {
+final class HealthKitManager: Sendable {
     static let shared = HealthKitManager()
     private let store = HKHealthStore()
-    private var didRequestAuthorization = false
+    private let didRequestAuthorization = OSAllocatedUnfairLock(initialState: false)
 
     private let writeTypes: Set<HKSampleType> = [
         HKQuantityType(.dietaryEnergyConsumed),
@@ -30,9 +31,12 @@ final class HealthKitManager: @unchecked Sendable {
         let profile = try await UserProfileRepository.current()
         guard profile.healthKitSyncEnabled else { return nil }
 
-        if !didRequestAuthorization {
+        let needsAuthorization = didRequestAuthorization.withLock { requested in
+            defer { requested = true }
+            return !requested
+        }
+        if needsAuthorization {
             try await store.requestAuthorization(toShare: writeTypes, read: [])
-            didRequestAuthorization = true
         }
 
         // HKObject validates quantities at creation time and raises an

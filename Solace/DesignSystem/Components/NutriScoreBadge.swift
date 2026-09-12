@@ -10,12 +10,13 @@ import SwiftUI
 /// presented on-pack in the EU, deliberately not reskinned per the spec.
 struct NutriScoreBadge: View {
     let grade: String?
+    var version: String?
 
     private let letters = ["A", "B", "C", "D", "E"]
 
     var body: some View {
         VStack(spacing: Spacing.xs) {
-            Text("NUTRI-SCORE")
+            Text(version.map { "NUTRI-SCORE \u{00b7} v\($0)" } ?? "NUTRI-SCORE")
                 .font(.solaceCaption)
                 .foregroundStyle(.secondary)
             HStack(spacing: 2) {

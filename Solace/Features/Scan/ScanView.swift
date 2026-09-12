@@ -3,7 +3,9 @@
 //  Solace
 //
 
+import AVFoundation
 import SwiftUI
+import UIKit
 
 struct ScanView: View {
     @FocusState private var barcodeFocused: Bool
@@ -15,6 +17,10 @@ struct ScanView: View {
     private var normalizedBarcode: String { manualBarcode.trimmingCharacters(in: .whitespacesAndNewlines) }
     private var isValidBarcode: Bool {
         [8, 12, 13, 14].contains(normalizedBarcode.count) && normalizedBarcode.allSatisfy { $0.isASCII && $0.isNumber }
+    }
+
+    private var isCameraAccessDenied: Bool {
+        [.denied, .restricted].contains(AVCaptureDevice.authorizationStatus(for: .video))
     }
 
     var body: some View {
@@ -55,6 +61,24 @@ struct ScanView: View {
                             .padding(.bottom, Spacing.xl)
                         }
                     }
+                } else if isCameraAccessDenied {
+                    ContentUnavailableView {
+                        Label("Camera Access Needed", systemImage: "barcode.viewfinder")
+                    } description: {
+                        Text("Solace needs camera access to scan barcodes. Enable it in Settings, or enter a barcode manually instead.")
+                    } actions: {
+                        Button("Open Settings") {
+                            if let url = URL(string: UIApplication.openSettingsURLString) {
+                                UIApplication.shared.open(url)
+                            }
+                        }
+                        .buttonStyle(.solacePrimary())
+                    }
+                    .safeAreaInset(edge: .bottom) {
+                        Button("Enter Barcode Manually") { showManualEntry = true }
+                            .buttonStyle(.solaceSecondary())
+                            .padding()
+                    }
                 } else {
                     ContentUnavailableView(
                         "Camera Scanning Unavailable",
@@ -93,8 +117,14 @@ struct ScanView: View {
                 }
             }
             .task {
-                await Task.yield()
-                barcodeFocused = true
+                // A single `Task.yield()` isn't enough for the field to be
+                // focusable the instant the sheet's presentation animation
+                // starts — retry for a bit so focus reliably lands without
+                // requiring an extra tap.
+                for _ in 0..<20 {
+                    barcodeFocused = true
+                    try? await Task.sleep(for: .milliseconds(50))
+                }
             }
             .navigationTitle("Enter Barcode")
             .navigationBarTitleDisplayMode(.inline)

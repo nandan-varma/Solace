@@ -25,7 +25,7 @@ struct OpenFoodFactsClientTests {
         #expect(product.nutriscoreGrade == "e")
         #expect(product.nutriscoreVersion == "2023")
         #expect(product.novaGroup == 4)
-        #expect(product.greenScoreGrade == nil, "ecoscore_grade is 'unknown' for this product and should map to nil")
+        #expect(product.ecoScoreGrade == nil, "ecoscore_grade is 'unknown' for this product and should map to nil")
         #expect(product.energyKcal100g == 539)
         #expect(product.proteins100g == 6.3)
         #expect(product.allergensTags.contains("en:milk"))

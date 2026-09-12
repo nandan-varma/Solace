@@ -13,7 +13,7 @@ import Foundation
 struct FoodScoringInput: Equatable {
     var nutriScoreGrade: String?
     var novaGroup: Int?
-    var greenScoreGrade: String?
+    var ecoScoreGrade: String?
     var allergensTags: [String] = []
     var ingredientsText: String?
 
@@ -32,7 +32,7 @@ extension CachedProduct {
         FoodScoringInput(
             nutriScoreGrade: nutriscoreGrade,
             novaGroup: novaGroup,
-            greenScoreGrade: greenScoreGrade,
+            ecoScoreGrade: ecoScoreGrade,
             allergensTags: allergensTags,
             ingredientsText: ingredientsText,
             energyKcal100g: energyKcal100g,
@@ -48,7 +48,7 @@ extension CachedProduct {
 }
 
 extension CachedGenericFood {
-    /// USDA data has no Nutri-Score/NOVA/Green-Score or allergen tags — those
+    /// USDA data has no Nutri-Score/NOVA/Eco-Score or allergen tags — those
     /// factors simply don't contribute, and the composite is renormalized
     /// over whatever factors are available.
     var scoringInput: FoodScoringInput {

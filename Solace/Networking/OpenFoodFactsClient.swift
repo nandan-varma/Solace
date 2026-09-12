@@ -5,10 +5,26 @@
 
 import Foundation
 
-enum OpenFoodFactsError: Error, Equatable {
+enum OpenFoodFactsError: LocalizedError, Equatable {
+    case invalidBarcode
     case notFound
     case server(Int)
     case decoding
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidBarcode:
+            return "That barcode isn't valid."
+        case .notFound:
+            return "No product found for this barcode. Try scanning again or search for it by name."
+        case .server(429):
+            return "Open Food Facts is rate-limiting requests right now. Try again in a minute."
+        case .server(let code):
+            return "Open Food Facts returned an error (\(code)). Try again shortly."
+        case .decoding:
+            return "Couldn't read the product data from Open Food Facts."
+        }
+    }
 }
 
 /// Thin client for the Open Food Facts API v3. ODbL-licensed: the app
@@ -20,9 +36,10 @@ enum OpenFoodFactsClient {
     static let userAgent = "Solace/1.0 (contact@nandan.fyi)"
 
     static func fetchProduct(barcode: String) async throws -> CachedProduct {
-        var request = URLRequest(
-            url: URL(string: "https://world.openfoodfacts.org/api/v3/product/\(barcode).json")!
-        )
+        var components = URLComponents(string: "https://world.openfoodfacts.org/api/v3/product/")
+        components?.path += "\(barcode).json"
+        guard let url = components?.url else { throw OpenFoodFactsError.invalidBarcode }
+        var request = URLRequest(url: url)
         request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
 
         let (data, response) = try await URLSession.shared.data(for: request)
@@ -88,7 +105,7 @@ enum OpenFoodFactsClient {
                     nutriscoreGrade: nutriscoreGrade,
                     nutriscoreVersion: nutriscoreVersion,
                     novaGroup: novaGroup,
-                    greenScoreGrade: (ecoscoreGrade == "unknown" || ecoscoreGrade == "not-applicable") ? nil : ecoscoreGrade,
+                    ecoScoreGrade: (ecoscoreGrade == "unknown" || ecoscoreGrade == "not-applicable") ? nil : ecoscoreGrade,
                     energyKcal100g: nutriments?.energyKcal100g,
                     proteins100g: nutriments?.proteins100g,
                     carbohydrates100g: nutriments?.carbohydrates100g,

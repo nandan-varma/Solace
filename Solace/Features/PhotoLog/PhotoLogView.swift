@@ -211,7 +211,7 @@ struct PhotoLogView: View {
             confidenceCard(draft)
 
             VStack(alignment: .leading, spacing: Spacing.sm) {
-                Text("IDENTIFIED ITEMS \u{00b7} TAP +/- TO ADJUST").font(.solaceCaption).foregroundStyle(.secondary)
+                Text("IDENTIFIED ITEMS \u{00b7} TAP +/- TO ADJUST, \u{2296} TO REMOVE").font(.solaceCaption).foregroundStyle(.secondary)
                 VStack(spacing: 0) {
                     ForEach(Array(draft.items.indices), id: \.self) { index in
                         itemRow(index: index)
@@ -255,7 +255,16 @@ struct PhotoLogView: View {
     private func itemRow(index: Int) -> some View {
         Group {
             if let item = draft?.items[safe: index] {
-                VStack(alignment: .leading, spacing: Spacing.sm) {
+                HStack(alignment: .center, spacing: Spacing.sm) {
+                    if (draft?.items.count ?? 0) > 1 {
+                        Button {
+                            removeItem(at: index)
+                        } label: {
+                            Image(systemName: "minus.circle.fill")
+                                .foregroundStyle(Color.solaceDestructive)
+                        }
+                        .buttonStyle(.plain)
+                    }
                     VStack(alignment: .leading, spacing: 2) {
                         Text(item.name).font(.solaceBody)
                         Text("\(Int(item.kcal)) kcal").font(.solaceCaption).foregroundStyle(.secondary)
@@ -280,6 +289,15 @@ struct PhotoLogView: View {
                 .padding(.vertical, Spacing.sm)
             }
         }
+    }
+
+    /// A misidentified item can be dropped entirely rather than just
+    /// shrunk to a low gram count — but a draft always keeps at least one
+    /// item, since an empty draft has nothing meaningful to save.
+    private func removeItem(at index: Int) {
+        guard var draft, draft.items.count > 1, draft.items.indices.contains(index) else { return }
+        draft.items.remove(at: index)
+        self.draft = draft
     }
 
     private func saveCard(_ draft: PhotoEstimateResult) -> some View {

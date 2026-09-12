@@ -1,24 +1,24 @@
 //
-//  GreenScoreBadge.swift
+//  EcoScoreBadge.swift
 //  Solace
 //
 
 import SwiftUI
 
-/// Green-Score (environmental impact) badge. Same A-E scale as Nutri-Score,
+/// Eco-Score (environmental impact) badge. Same A-E scale as Nutri-Score,
 /// shown as a filled circle per Open Food Facts' on-pack presentation.
-struct GreenScoreBadge: View {
+struct EcoScoreBadge: View {
     let grade: String?
 
     var body: some View {
         VStack(spacing: Spacing.xs) {
-            Text("GREEN-SCORE")
+            Text("ECO-SCORE")
                 .font(.solaceCaption)
                 .foregroundStyle(.secondary)
             Text(grade?.uppercased() ?? "–")
                 .font(.system(.title2, weight: .bold))
                 .frame(width: 44, height: 44)
-                .background(Color.greenScoreColor(for: grade))
+                .background(Color.ecoScoreColor(for: grade))
                 .foregroundStyle(.white)
                 .clipShape(Circle())
         }
@@ -26,5 +26,5 @@ struct GreenScoreBadge: View {
 }
 
 #Preview {
-    GreenScoreBadge(grade: "a")
+    EcoScoreBadge(grade: "a")
 }

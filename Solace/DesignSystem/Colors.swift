@@ -54,9 +54,14 @@ extension Color {
         }
     }
 
-    // MARK: Green-Score — no certified hex published; reuses the Nutri-Score
-    // scale since both are A-E environmental/nutrition letter grades.
-    static func greenScoreColor(for grade: String?) -> Color {
-        nutriScoreColor(for: grade)
+    // MARK: Eco-Score — no certified hex published; reuses the Nutri-Score
+    // scale since both are letter-graded environmental/nutrition scores.
+    // OFF's Eco-Score can also return "f" (below Nutri-Score's a-e range),
+    // so that's handled explicitly rather than falling through to gray.
+    static func ecoScoreColor(for grade: String?) -> Color {
+        if grade?.lowercased() == "f" {
+            return Color(red: 0xB0 / 255, green: 0x1E / 255, blue: 0x0A / 255)
+        }
+        return nutriScoreColor(for: grade)
     }
 }

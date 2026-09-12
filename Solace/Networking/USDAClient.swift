@@ -5,9 +5,20 @@
 
 import Foundation
 
-enum USDAError: Error, Equatable {
+enum USDAError: LocalizedError, Equatable {
     case server(Int)
     case decoding
+
+    var errorDescription: String? {
+        switch self {
+        case .server(429):
+            return "USDA's search is rate-limited right now. Try again in a minute."
+        case .server(let code):
+            return "USDA FoodData Central returned an error (\(code)). Try again shortly."
+        case .decoding:
+            return "Couldn't read the search results from USDA FoodData Central."
+        }
+    }
 }
 
 /// Thin client for USDA FoodData Central. Public domain data — no

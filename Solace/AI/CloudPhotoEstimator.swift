@@ -7,6 +7,7 @@ import Foundation
 
 enum CloudPhotoEstimatorError: LocalizedError, Equatable {
     case notConfigured
+    case missingModel
     case invalidEndpoint
     case invalidOrDeprecatedModel(String)
     case server(Int, String)
@@ -16,6 +17,8 @@ enum CloudPhotoEstimatorError: LocalizedError, Equatable {
         switch self {
         case .notConfigured:
             return "Enable AI features and add an API key in Settings first."
+        case .missingModel:
+            return "Add a model name in Settings first."
         case .invalidEndpoint:
             return "The AI endpoint URL in Settings isn't valid. Update it and try again."
         case .invalidOrDeprecatedModel(let model):
@@ -34,21 +37,31 @@ enum CloudPhotoEstimatorError: LocalizedError, Equatable {
 /// key baked into every install).
 enum CloudPhotoEstimator {
     static func estimate(imageData: Data, userContext: String?, settings: AIProviderSettings, apiKey: String) async throws -> PhotoEstimateResult {
-        guard settings.isEnabled, !apiKey.isEmpty, !settings.modelString.isEmpty else {
+        guard settings.isEnabled, !apiKey.isEmpty else {
             throw CloudPhotoEstimatorError.notConfigured
         }
+        guard !settings.modelString.isEmpty else {
+            throw CloudPhotoEstimatorError.missingModel
+        }
 
-        guard let url = URL(string: settings.baseURL.trimmingCharacters(in: .init(charactersIn: "/")) + "/chat/completions") else {
+        let trimmedBase = settings.baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let baseURL = URL(string: trimmedBase.trimmingCharacters(in: .init(charactersIn: "/"))),
+              let host = baseURL.host, !host.isEmpty,
+              baseURL.scheme == "https" || ["localhost", "127.0.0.1"].contains(host),
+              let url = URL(string: baseURL.absoluteString + "/chat/completions")
+        else {
             throw CloudPhotoEstimatorError.invalidEndpoint
         }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
+        request.timeoutInterval = 60
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
 
-        let dataURL = "data:image/jpeg;base64,\(imageData.base64EncodedString())"
+        let dataURL = "data:\(mimeType(for: imageData));base64,\(imageData.base64EncodedString())"
         let body: [String: Any] = [
             "model": settings.modelString,
+            "max_tokens": 1000,
             "response_format": ["type": "json_object"],
             "messages": [
                 [
@@ -91,6 +104,14 @@ enum CloudPhotoEstimator {
     /// malicious provider response can't render an unbounded stepper list.
     private static let maxItems = 25
 
+    /// `downsampled(_:)` always re-encodes as JPEG, but its fallback (raw
+    /// `imageData` when the `UIImage` decode fails) can be PNG or HEIC —
+    /// sniff the magic bytes so the data URL's declared type is accurate.
+    private static func mimeType(for data: Data) -> String {
+        if data.starts(with: [0x89, 0x50, 0x4E, 0x47]) { return "image/png" }
+        return "image/jpeg"
+    }
+
     static func parse(_ data: Data) throws -> PhotoEstimateResult {
         guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let choices = root["choices"] as? [[String: Any]],
@@ -105,17 +126,21 @@ enum CloudPhotoEstimator {
             guard let name = item["name"] as? String else { return nil }
             let grams = (item["estimatedGrams"] as? NSNumber)?.doubleValue ?? 0
             guard grams.isFinite else { return nil }
+            let clampedGrams = min(max(grams, 1), 2000)
             func nonNegative(_ key: String) -> Double {
                 let value = (item[key] as? NSNumber)?.doubleValue ?? 0
                 return value.isFinite ? max(0, value) : 0
             }
+            // Physical plausibility ceilings tied to the (already clamped)
+            // portion size — a macro gram count can't exceed the item's
+            // total weight, and energy can't exceed pure fat's 9 kcal/g.
             return PhotoEstimateItem(
                 name: name,
-                estimatedGrams: min(max(grams, 1), 2000),
-                kcal: nonNegative("kcal"),
-                proteinG: nonNegative("proteinG"),
-                carbG: nonNegative("carbG"),
-                fatG: nonNegative("fatG")
+                estimatedGrams: clampedGrams,
+                kcal: min(nonNegative("kcal"), clampedGrams * 9),
+                proteinG: min(nonNegative("proteinG"), clampedGrams),
+                carbG: min(nonNegative("carbG"), clampedGrams),
+                fatG: min(nonNegative("fatG"), clampedGrams)
             )
         }
         guard !items.isEmpty else { throw CloudPhotoEstimatorError.decoding }

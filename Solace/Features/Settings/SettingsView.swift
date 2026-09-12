@@ -253,12 +253,12 @@ struct SettingsView: View {
         Section {
             weightSlider("Nutri-Score", value: $profile.nutriScoreWeight, tint: .solaceVitality)
             weightSlider("NOVA", value: $profile.novaWeight, tint: .solaceWarning)
-            weightSlider("Green-Score", value: $profile.greenScoreWeight, tint: .solaceInteractive)
+            weightSlider("Eco-Score", value: $profile.ecoScoreWeight, tint: .solaceInteractive)
             weightSlider("Personal Fit", value: $profile.personalGoalWeight, tint: .solaceAI)
         } header: {
             Label("Scoring Weights", systemImage: "chart.pie.fill")
         } footer: {
-            let total = profile.nutriScoreWeight + profile.novaWeight + profile.greenScoreWeight + profile.personalGoalWeight
+            let total = profile.nutriScoreWeight + profile.novaWeight + profile.ecoScoreWeight + profile.personalGoalWeight
             HStack {
                 Image(systemName: abs(total - 1) < 0.01 ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
                 Text("Total: \(total, format: .percent.precision(.fractionLength(0)))")
@@ -411,12 +411,29 @@ struct SettingsView: View {
         }
     }
 
+    private var aiValidation: String? {
+        guard aiSettings.isEnabled else { return nil }
+        let trimmed = aiSettings.baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        guard let url = URL(string: trimmed), let host = url.host, !host.isEmpty else {
+            return "Enter a valid endpoint URL, e.g. https://api.openai.com/v1."
+        }
+        guard url.scheme == "https" || ["localhost", "127.0.0.1"].contains(host) else {
+            return "The endpoint must use https:// (or be localhost) so your API key isn't sent in plaintext."
+        }
+        return nil
+    }
+
     private var cloudAISection: some View {
         Section {
             Toggle(isOn: $aiSettings.isEnabled) {
                 Label("Enable Cloud AI (Photo Logging)", systemImage: "camera.fill")
             }
             if aiSettings.isEnabled {
+                if let aiValidation {
+                    Label(aiValidation, systemImage: "exclamationmark.circle")
+                        .font(.footnote).foregroundStyle(Color.solaceDestructive)
+                }
                 LabeledContent("Endpoint") {
                     TextField("https://api.openai.com/v1", text: $aiSettings.baseURL)
                     .focused($focusedField, equals: .endpoint)

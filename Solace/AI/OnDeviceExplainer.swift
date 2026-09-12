@@ -36,7 +36,7 @@ enum OnDeviceExplainer {
         let grades = [
             result.nutriScoreGrade.map { "Nutri-Score \($0.uppercased())" },
             result.novaGroup.map { "NOVA \($0)" },
-            result.greenScoreGrade.map { "Green-Score \($0.uppercased())" },
+            result.ecoScoreGrade.map { "Eco-Score \($0.uppercased())" },
         ].compactMap { $0 }.joined(separator: ", ")
 
         let prompt = """

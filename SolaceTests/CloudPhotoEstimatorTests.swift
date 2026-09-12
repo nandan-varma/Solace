@@ -48,4 +48,34 @@ struct CloudPhotoEstimatorTests {
         item.kcal = rate.kcal * 200
         #expect(item.kcal == 260)
     }
+
+    @Test func plaintextHTTPEndpointIsRejected() async {
+        var settings = AIProviderSettings(id: UUID())
+        settings.isEnabled = true
+        settings.baseURL = "http://my-vps.example.com:8000/v1"
+        settings.modelString = "gpt-4o-mini"
+        await #expect(throws: CloudPhotoEstimatorError.invalidEndpoint) {
+            try await CloudPhotoEstimator.estimate(imageData: Data(), userContext: nil, settings: settings, apiKey: "sk-test")
+        }
+    }
+
+    @Test func emptyEndpointIsRejectedAsInvalidRatherThanURLError() async {
+        var settings = AIProviderSettings(id: UUID())
+        settings.isEnabled = true
+        settings.baseURL = ""
+        settings.modelString = "gpt-4o-mini"
+        await #expect(throws: CloudPhotoEstimatorError.invalidEndpoint) {
+            try await CloudPhotoEstimator.estimate(imageData: Data(), userContext: nil, settings: settings, apiKey: "sk-test")
+        }
+    }
+
+    @Test func missingModelStringThrowsMissingModel() async {
+        var settings = AIProviderSettings(id: UUID())
+        settings.isEnabled = true
+        settings.baseURL = "https://api.openai.com/v1"
+        settings.modelString = ""
+        await #expect(throws: CloudPhotoEstimatorError.missingModel) {
+            try await CloudPhotoEstimator.estimate(imageData: Data(), userContext: nil, settings: settings, apiKey: "sk-test")
+        }
+    }
 }

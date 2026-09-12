@@ -39,4 +39,22 @@ enum GenericFoodRepository {
         }
         return results
     }
+
+    /// Cache-miss re-fetch for a `DiaryEntry` that references an `fdcId` this
+    /// device never cached locally (e.g. after CloudKit sync from another
+    /// device) — used so diary rows resolve real names instead of a
+    /// permanent placeholder.
+    static func food(forFdcId fdcId: Int) async throws -> CachedGenericFood {
+        @Dependency(\.defaultDatabase) var database
+        if let cached = try await database.read({ db in
+            try CachedGenericFood.find(fdcId).fetchOne(db)
+        }) {
+            return cached
+        }
+        let fetched = try await USDAClient.detail(fdcId: fdcId)
+        try await database.write { db in
+            try CachedGenericFood.upsert { fetched }.execute(db)
+        }
+        return fetched
+    }
 }

@@ -14,9 +14,9 @@ nonisolated struct CachedProduct: Codable, Identifiable, Sendable {
     var name: String?
     var brands: String?
     var nutriscoreGrade: String?           // "a".."e"
-    var nutriscoreVersion: String?         // "2021" | "2024" — see ARCHITECTURE.md risks
+    var nutriscoreVersion: String?         // e.g. "2023" — see ARCHITECTURE.md risks
     var novaGroup: Int?                     // 1..4
-    var greenScoreGrade: String?
+    var ecoScoreGrade: String?
     var energyKcal100g: Double?
     var proteins100g: Double?
     var carbohydrates100g: Double?
