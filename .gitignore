@@ -1,1 +1,26 @@
+# Xcode
+build/
+DerivedData/
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.xcuserstate
+xcuserdata/
+*.xcscmblueprint
+*.xccheckout
+
+# Swift Package Manager
+.swiftpm/
+.build/
+
+# CocoaPods / Carthage (unused currently, harmless if absent)
+Pods/
+Carthage/Build/
+
+# macOS
+.DS_Store
+
+# Misc
+*.log
 .pi/
